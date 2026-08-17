@@ -27,9 +27,19 @@ public class StorePriceController {
     /** PUT /api/stores/{storeId}/prices - bulk upsert, called by the receipt scanner's "Confirm" action. */
     @PutMapping
     public ResponseEntity<List<StorePriceDto>> updatePrices(
-        @PathVariable Long storeId,
-        @RequestBody UpdateStorePricesRequest request
+            @PathVariable Long storeId,
+            @RequestBody UpdateStorePricesRequest request
     ) {
         return ResponseEntity.ok(storePriceService.updatePrices(storeId, request));
+    }
+
+    /** DELETE /api/stores/{storeId}/prices/{itemId} - removes one item's price at this store entirely. */
+    @DeleteMapping("/{itemId}")
+    public ResponseEntity<Void> deletePrice(
+            @PathVariable Long storeId,
+            @PathVariable Long itemId
+    ) {
+        storePriceService.deletePrice(storeId, itemId);
+        return ResponseEntity.noContent().build();
     }
 }

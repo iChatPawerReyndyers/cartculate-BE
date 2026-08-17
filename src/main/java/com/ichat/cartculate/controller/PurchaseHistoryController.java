@@ -1,6 +1,6 @@
 package com.ichat.cartculate.controller;
 
-import com.ichat.cartculate.dto.CreatePurchasesRequest;
+import com.ichat.cartculate.dto.CreatePurchaseRequest;
 import com.ichat.cartculate.dto.PurchaseRecordDto;
 import com.ichat.cartculate.service.PurchaseHistoryService;
 import org.springframework.http.HttpStatus;
@@ -19,19 +19,19 @@ public class PurchaseHistoryController {
         this.purchaseHistoryService = purchaseHistoryService;
     }
 
-    /** GET /api/users/{userId}/purchases - feeds the Insights tab's charts. */
+    /** GET /api/users/{userId}/purchases - receipt-level history. */
     @GetMapping
     public ResponseEntity<List<PurchaseRecordDto>> getPurchases(@PathVariable Long userId) {
         return ResponseEntity.ok(purchaseHistoryService.getPurchasesForUser(userId));
     }
 
-    /** POST /api/users/{userId}/purchases - bulk insert (receipt confirm, "mark as bought"). */
+    /** POST /api/users/{userId}/purchases - archives ONE receipt at Checkout completion. */
     @PostMapping
-    public ResponseEntity<List<PurchaseRecordDto>> createPurchases(
-        @PathVariable Long userId,
-        @RequestBody CreatePurchasesRequest request
+    public ResponseEntity<PurchaseRecordDto> createPurchase(
+            @PathVariable Long userId,
+            @RequestBody CreatePurchaseRequest request
     ) {
-        List<PurchaseRecordDto> created = purchaseHistoryService.createPurchases(userId, request);
+        PurchaseRecordDto created = purchaseHistoryService.createPurchase(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 }

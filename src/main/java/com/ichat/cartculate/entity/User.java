@@ -21,4 +21,9 @@ public class User {
 
     @Column(nullable = false, unique = true)
     private String email;
+
+    /** Persisted Home/Away toggle for the Cart screen, per Feature 1. Defaults to HOME. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private UserMode currentMode = UserMode.HOME;
 }

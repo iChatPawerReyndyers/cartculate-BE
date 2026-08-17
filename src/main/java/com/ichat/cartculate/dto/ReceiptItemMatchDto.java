@@ -3,16 +3,12 @@ package com.ichat.cartculate.dto;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import java.math.BigDecimal;
-import java.util.List;
 
+/** One candidate match offered for a receipt line, for the frontend's "needs review" dropdown. Mirrors the frontend's ReceiptItemMatch type. */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class StorePriceDto {
+public class ReceiptItemMatchDto {
     private String itemId;
     private String itemName;
-    private String storeId;
-    private String storeName;
-    private BigDecimal priceAmount;
 }

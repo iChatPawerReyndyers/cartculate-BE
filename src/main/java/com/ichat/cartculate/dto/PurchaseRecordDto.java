@@ -5,19 +5,21 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.math.BigDecimal;
 
-/** Mirrors the frontend's PurchaseRecord interface (src/types/index.ts). */
+/**
+ * Mirrors one archived RECEIPT (not one line item, per the updated spec's
+ * purchase_history table). itemManifestJson is the raw JSON string from the
+ * entity - the frontend parses it for display; see PurchaseHistory.java for
+ * the expected array shape.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class PurchaseRecordDto {
     private String id;
     private String userId;
-    private String itemId;
-    private String itemName;
-    private String category;
     private String storeId;
     private String storeName;
-    private BigDecimal quantityBought;
-    private BigDecimal pricePerUnit;
+    private BigDecimal totalReceiptSpent;
     private String purchaseDate; // ISO date string
+    private String itemManifestJson;
 }

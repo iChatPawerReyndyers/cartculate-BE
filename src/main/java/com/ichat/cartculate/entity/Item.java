@@ -23,4 +23,25 @@ public class Item {
     /** e.g. Produce, Meat, Household. Used by the Insights category pie chart. */
     @Column(nullable = false)
     private String category;
+
+    /**
+     * How this item is typically sold/measured, e.g. "kg", "pack", "pc".
+     * Nullable - a null unit just means the item's name is shown bare with
+     * no "(unit)" suffix. Feeds Feature 1's Pricing Format rule
+     * (itemName (unit) e.g. "Carrots (kg)", "Napkin (pack)") on the
+     * frontend's CartItem display.
+     */
+    @Column(nullable = true)
+    private String unit;
+
+    /**
+     * True if this item should appear as an option in the Recipe modal's
+     * ingredient picker. Most catalog items (toiletries, snacks, etc.)
+     * aren't recipe ingredients at all, so this keeps that picker from
+     * being cluttered with everything in the catalog - only items
+     * explicitly flagged "can be an ingredient" (via the Add/Edit Product
+     * form) show up there.
+     */
+    @Column(nullable = false)
+    private boolean isIngredient = false;
 }

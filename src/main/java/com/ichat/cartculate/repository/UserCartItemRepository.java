@@ -10,6 +10,17 @@ public interface UserCartItemRepository extends JpaRepository<UserCartItem, Long
 
     /** Used when applying a +/- tap: finds the manual "Others" row (sourceRecipe is null). */
     List<UserCartItem> findByUserIdAndItemIdAndStoreIdAndSourceRecipeIsNull(
-        Long userId, Long itemId, Long storeId
+            Long userId, Long itemId, Long storeId
     );
+
+    /** Used by "Done Checkout" reconciliation: the checked-off rows for one store's trip. */
+    List<UserCartItem> findByUserIdAndStoreIdAndIsCheckedCheckoutTrue(Long userId, Long storeId);
+
+    /** Used by recipe-multiplier sync: the cart row (if any) already sourced from this recipe for this item+store. */
+    List<UserCartItem> findByUserIdAndItemIdAndStoreIdAndSourceRecipeId(
+            Long userId, Long itemId, Long storeId, Long sourceRecipeId
+    );
+
+    /** Used when a recipe is deleted or a checkout trip completes with unchecked items: every row sourced from this recipe. */
+    List<UserCartItem> findBySourceRecipeId(Long sourceRecipeId);
 }

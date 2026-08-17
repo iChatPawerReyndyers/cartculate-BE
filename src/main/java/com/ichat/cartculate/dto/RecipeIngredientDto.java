@@ -6,11 +6,11 @@ import lombok.AllArgsConstructor;
 import java.math.BigDecimal;
 
 /**
- * Mirrors the frontend's RecipeIngredient interface. Note: defaultStoreId/
- * defaultStoreName/defaultPrice aren't columns on Recipe_Ingredient itself
- * (per the ER model, that table only has recipe_id/item_id/base_quantity) -
- * RecipeService derives them by picking the cheapest known Store_Price for
- * that item. See the TODO in RecipeService for how to make this configurable.
+ * Mirrors the frontend's RecipeIngredient interface. defaultStoreId/
+ * defaultStoreName/defaultPrice come from the ingredient's targetStoreId
+ * (custom routing, per the updated spec) when set, otherwise RecipeService
+ * falls back to whichever store has the cheapest known Store_Price for
+ * that item. See RecipeService.toIngredientDto() for the fallback logic.
  */
 @Data
 @NoArgsConstructor
@@ -18,9 +18,14 @@ import java.math.BigDecimal;
 public class RecipeIngredientDto {
     private String itemId;
     private String itemName;
+    private String category;
     private BigDecimal baseQuantity;
     private String unit;
     private String defaultStoreId;
     private String defaultStoreName;
     private BigDecimal defaultPrice;
+    /** True if defaultStoreId came from an explicit targetStoreId rather than the cheapest-price fallback. */
+    private boolean isCustomRouted;
+    /** True if this ingredient is optional (garnish, skippable spice, etc.) - see RecipeIngredient.java. */
+    private boolean isOptional;
 }

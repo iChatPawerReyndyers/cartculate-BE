@@ -21,5 +21,9 @@ public class CreateRecipeRequest {
         private Long itemId;
         private BigDecimal baseQuantity;
         private String unit;
+        /** Optional. Null = fall back to cheapest-price store for this item. */
+        private Long targetStoreId;
+        /** True if this ingredient is optional (garnish, skippable spice, etc.). Defaults to false. */
+        private boolean isOptional;
     }
 }

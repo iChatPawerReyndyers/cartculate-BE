@@ -17,9 +17,9 @@ public class StorePriceService {
     private final StoreRepository storeRepository;
 
     public StorePriceService(
-        StorePriceRepository storePriceRepository,
-        ItemRepository itemRepository,
-        StoreRepository storeRepository
+            StorePriceRepository storePriceRepository,
+            ItemRepository itemRepository,
+            StoreRepository storeRepository
     ) {
         this.storePriceRepository = storePriceRepository;
         this.itemRepository = itemRepository;
@@ -28,8 +28,15 @@ public class StorePriceService {
 
     public List<StorePriceDto> getPricesForStore(Long storeId) {
         return storePriceRepository.findByStoreId(storeId).stream()
-            .map(this::toDto)
-            .collect(Collectors.toList());
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    /** All known prices across every store and item - feeds the "Price Catalog" view in the Scan & Prices tab. */
+    public List<StorePriceDto> getAllPrices() {
+        return storePriceRepository.findAll().stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -39,29 +46,36 @@ public class StorePriceService {
      */
     public List<StorePriceDto> updatePrices(Long storeId, UpdateStorePricesRequest request) {
         Store store = storeRepository.findById(storeId)
-            .orElseThrow(() -> new IllegalArgumentException("Store not found: " + storeId));
+                .orElseThrow(() -> new IllegalArgumentException("Store not found: " + storeId));
 
         return request.getUpdates().stream()
-            .map(update -> {
-                Item item = itemRepository.findById(update.getItemId())
-                    .orElseThrow(() -> new IllegalArgumentException("Item not found: " + update.getItemId()));
+                .map(update -> {
+                    Item item = itemRepository.findById(update.getItemId())
+                            .orElseThrow(() -> new IllegalArgumentException("Item not found: " + update.getItemId()));
 
-                StorePriceId id = new StorePriceId(item.getId(), store.getId());
-                StorePrice storePrice = storePriceRepository.findById(id)
-                    .orElseGet(() -> new StorePrice(id, item, store, update.getPriceAmount()));
-                storePrice.setPriceAmount(update.getPriceAmount());
+                    StorePriceId id = new StorePriceId(item.getId(), store.getId());
+                    StorePrice storePrice = storePriceRepository.findById(id)
+                            .orElseGet(() -> new StorePrice(id, item, store, update.getPriceAmount()));
+                    storePrice.setPriceAmount(update.getPriceAmount());
 
-                return toDto(storePriceRepository.save(storePrice));
-            })
-            .collect(Collectors.toList());
+                    return toDto(storePriceRepository.save(storePrice));
+                })
+                .collect(Collectors.toList());
+    }
+
+    /** Removes a single item's price at a store entirely - used by the Price Catalog editor's "remove store price" action. */
+    public void deletePrice(Long storeId, Long itemId) {
+        StorePriceId id = new StorePriceId(itemId, storeId);
+        storePriceRepository.deleteById(id);
     }
 
     private StorePriceDto toDto(StorePrice storePrice) {
         return new StorePriceDto(
-            storePrice.getItem().getId().toString(),
-            storePrice.getItem().getName(),
-            storePrice.getStore().getId().toString(),
-            storePrice.getPriceAmount()
+                storePrice.getItem().getId().toString(),
+                storePrice.getItem().getName(),
+                storePrice.getStore().getId().toString(),
+                storePrice.getStore().getName(),
+                storePrice.getPriceAmount()
         );
     }
 }
