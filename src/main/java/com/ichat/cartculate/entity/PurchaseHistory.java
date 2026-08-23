@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -50,7 +52,18 @@ public class PurchaseHistory {
      * Stored as jsonb for native Postgres JSON querying if ever needed;
      * treated as an opaque string on the Java side to avoid pulling in a
      * JSON-mapping library for what's meant to be a write-mostly log.
+     *
+     * @JdbcTypeCode(SqlTypes.JSON) is the actual fix here, not just
+     * columnDefinition="jsonb" below - columnDefinition only affects
+     * ddl-auto's generated CREATE/ALTER TABLE statement, it does NOT tell
+     * Hibernate how to bind this parameter on INSERT/UPDATE. Without it,
+     * Hibernate sends the String as a plain VARCHAR bind parameter, and
+     * Postgres rejects the implicit VARCHAR-to-jsonb cast on a prepared
+     * statement (this is the exact "column is of type jsonb but
+     * expression is of type character varying" error). JdbcTypeCode tells
+     * Hibernate to bind it as actual JSON, matching the column's real type.
      */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "jsonb")
     private String itemManifestJson;
 }

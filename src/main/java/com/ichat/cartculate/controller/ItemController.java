@@ -2,6 +2,7 @@ package com.ichat.cartculate.controller;
 
 import com.ichat.cartculate.dto.CreateItemRequest;
 import com.ichat.cartculate.dto.ItemDto;
+import com.ichat.cartculate.dto.UpdateIncludeInCartRequest;
 import com.ichat.cartculate.dto.UpdateItemRequest;
 import com.ichat.cartculate.service.ItemService;
 import org.springframework.http.HttpStatus;
@@ -40,5 +41,21 @@ public class ItemController {
             @RequestBody UpdateItemRequest request
     ) {
         return ResponseEntity.ok(itemService.updateItem(itemId, request));
+    }
+
+    /** PATCH /api/items/{itemId}/include-in-cart - the Price Catalog checkbox controlling Cart tab visibility. */
+    @PatchMapping("/{itemId}/include-in-cart")
+    public ResponseEntity<ItemDto> updateIncludeInCart(
+            @PathVariable Long itemId,
+            @RequestBody UpdateIncludeInCartRequest request
+    ) {
+        return ResponseEntity.ok(itemService.updateIncludeInCart(itemId, request.isIncludeInCart()));
+    }
+
+    /** DELETE /api/items/{itemId} - removes a product entirely, via the Price Catalog's delete action. Also removes its prices, cart rows, and recipe ingredient lines - see ItemService.deleteItem's javadoc. */
+    @DeleteMapping("/{itemId}")
+    public ResponseEntity<Void> deleteItem(@PathVariable Long itemId) {
+        itemService.deleteItem(itemId);
+        return ResponseEntity.noContent().build();
     }
 }

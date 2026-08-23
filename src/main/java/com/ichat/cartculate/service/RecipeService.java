@@ -9,7 +9,6 @@ import com.ichat.cartculate.repository.*;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,6 +18,7 @@ public class RecipeService {
     private final RecipeRepository recipeRepository;
     private final RecipeIngredientRepository recipeIngredientRepository;
     private final StorePriceRepository storePriceRepository;
+    private final UserStorePriceRepository userStorePriceRepository;
     private final UserRepository userRepository;
     private final ItemRepository itemRepository;
     private final StoreRepository storeRepository;
@@ -29,6 +29,7 @@ public class RecipeService {
             RecipeRepository recipeRepository,
             RecipeIngredientRepository recipeIngredientRepository,
             StorePriceRepository storePriceRepository,
+            UserStorePriceRepository userStorePriceRepository,
             UserRepository userRepository,
             ItemRepository itemRepository,
             StoreRepository storeRepository,
@@ -38,6 +39,7 @@ public class RecipeService {
         this.recipeRepository = recipeRepository;
         this.recipeIngredientRepository = recipeIngredientRepository;
         this.storePriceRepository = storePriceRepository;
+        this.userStorePriceRepository = userStorePriceRepository;
         this.userRepository = userRepository;
         this.itemRepository = itemRepository;
         this.storeRepository = storeRepository;
@@ -58,7 +60,11 @@ public class RecipeService {
         Recipe recipe = new Recipe();
         recipe.setRecipeName(request.getName());
         recipe.setUser(user);
-        recipe.setCurrentMultiplier(BigDecimal.ZERO);
+        // Default the multiplier to 1x (not 0x) so a freshly-created recipe
+        // immediately contributes its per-batch ingredients to the Cart
+        // tab, instead of silently sitting at 0x until someone manually
+        // scales it up.
+        recipe.setCurrentMultiplier(BigDecimal.ONE);
         recipe = recipeRepository.save(recipe);
 
         saveIngredients(recipe, request.getIngredients());
@@ -191,28 +197,61 @@ public class RecipeService {
      * Store routing per ingredient: prefer the ingredient's explicit
      * targetStore (custom routing). Falls back to whichever store has the
      * cheapest known price for the item if no target is set.
+     *
+     * Feature: personal price overrides. Uses this recipe's OWNER's
+     * resolved price (their override if set, else the shared baseline)
+     * for both the target-store lookup and the "find cheapest" scan -
+     * otherwise a recipe's cost estimate and auto-routing could pick a
+     * store based on a price the recipe's owner doesn't actually pay.
      */
     private ResolvedStore resolveStore(RecipeIngredient ingredient) {
         Item item = ingredient.getItem();
+        Long userId = ingredient.getRecipe().getUser().getId();
 
         if (ingredient.getTargetStore() != null) {
             Store targetStore = ingredient.getTargetStore();
-            BigDecimal price = storePriceRepository
-                    .findByStoreId(targetStore.getId()).stream()
-                    .filter(sp -> sp.getItem().getId().equals(item.getId()))
-                    .findFirst()
-                    .map(StorePrice::getPriceAmount)
-                    .orElse(BigDecimal.ZERO);
+            BigDecimal price = resolvePriceForUser(userId, item.getId(), targetStore.getId());
             return new ResolvedStore(targetStore, price, true);
         }
 
-        StorePrice cheapest = storePriceRepository.findAll().stream()
-                .filter(sp -> sp.getItem().getId().equals(item.getId()))
-                .min(Comparator.comparing(StorePrice::getPriceAmount))
-                .orElse(null);
+        Store cheapestStore = null;
+        BigDecimal cheapestPrice = null;
+        for (StorePrice sp : storePriceRepository.findAll()) {
+            if (!sp.getItem().getId().equals(item.getId())) continue;
+            BigDecimal resolvedPrice = resolvePriceForUser(userId, item.getId(), sp.getStore().getId());
+            if (cheapestPrice == null || resolvedPrice.compareTo(cheapestPrice) < 0) {
+                cheapestPrice = resolvedPrice;
+                cheapestStore = sp.getStore();
+            }
+        }
+        // Also consider stores where this user ONLY has a personal
+        // override (no shared baseline at all) - otherwise a
+        // personal-only price could never win the "cheapest" comparison
+        // just because it never showed up in the loop above.
+        for (UserStorePrice override : userStorePriceRepository.findByUser_Id(userId)) {
+            if (!override.getItem().getId().equals(item.getId())) continue;
+            boolean alreadyConsidered = storePriceRepository.findByStoreId(override.getStore().getId()).stream()
+                    .anyMatch(sp -> sp.getItem().getId().equals(item.getId()));
+            if (alreadyConsidered) continue;
+            if (cheapestPrice == null || override.getPriceAmount().compareTo(cheapestPrice) < 0) {
+                cheapestPrice = override.getPriceAmount();
+                cheapestStore = override.getStore();
+            }
+        }
 
-        if (cheapest == null) return new ResolvedStore(null, BigDecimal.ZERO, false);
-        return new ResolvedStore(cheapest.getStore(), cheapest.getPriceAmount(), false);
+        if (cheapestStore == null) return new ResolvedStore(null, BigDecimal.ZERO, false);
+        return new ResolvedStore(cheapestStore, cheapestPrice, false);
+    }
+
+    /** Same resolution rule as CartService.resolvePriceForUser - override wins if present, else shared baseline, else zero. Duplicated rather than shared to avoid a circular dependency between the two services. */
+    private BigDecimal resolvePriceForUser(Long userId, Long itemId, Long storeId) {
+        return userStorePriceRepository.findByUser_IdAndItem_IdAndStore_Id(userId, itemId, storeId)
+                .map(UserStorePrice::getPriceAmount)
+                .orElseGet(() -> storePriceRepository.findByStoreId(storeId).stream()
+                        .filter(sp -> sp.getItem().getId().equals(itemId))
+                        .findFirst()
+                        .map(StorePrice::getPriceAmount)
+                        .orElse(BigDecimal.ZERO));
     }
 
     private RecipeIngredientDto toIngredientDto(RecipeIngredient ingredient) {

@@ -44,4 +44,18 @@ public class Item {
      */
     @Column(nullable = false)
     private boolean isIngredient = false;
+
+    /**
+     * Feature: "checkbox per item on Pricing tab controls what shows in
+     * Cart tab". Defaults true so every item already in the catalog
+     * before this feature existed keeps behaving exactly as before
+     * (visible in Cart) unless someone explicitly unchecks it.
+     * columnDefinition (not just nullable=false) matters here: ddl-auto=
+     * update running this ALTER TABLE against an ALREADY-POPULATED items
+     * table needs a real DB-level DEFAULT to backfill existing rows,
+     * same reasoning as the nullable columns added on User.java - a bare
+     * "not null" with no default fails against existing data in Postgres.
+     */
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean includeInCart = true;
 }

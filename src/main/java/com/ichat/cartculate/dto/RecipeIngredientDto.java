@@ -3,6 +3,7 @@ package com.ichat.cartculate.dto;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 
 /**
@@ -24,8 +25,19 @@ public class RecipeIngredientDto {
     private String defaultStoreId;
     private String defaultStoreName;
     private BigDecimal defaultPrice;
-    /** True if defaultStoreId came from an explicit targetStoreId rather than the cheapest-price fallback. */
+    /**
+     * True if defaultStoreId came from an explicit targetStoreId rather
+     * than the cheapest-price fallback.
+     * BUGFIX: same pre-existing Jackson "is"-prefix-stripping bug as
+     * ItemDto.isIngredient - see that file's comment. Both this field and
+     * isOptional below serialized without their "is" prefix, so the
+     * frontend never actually received either - the custom-routing
+     * indicator and the optional-ingredient badge were silently always
+     * false on every recipe, regardless of real data.
+     */
+    @JsonProperty("isCustomRouted")
     private boolean isCustomRouted;
     /** True if this ingredient is optional (garnish, skippable spice, etc.) - see RecipeIngredient.java. */
+    @JsonProperty("isOptional")
     private boolean isOptional;
 }

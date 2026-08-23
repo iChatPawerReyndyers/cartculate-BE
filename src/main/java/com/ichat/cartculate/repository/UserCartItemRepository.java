@@ -23,4 +23,7 @@ public interface UserCartItemRepository extends JpaRepository<UserCartItem, Long
 
     /** Used when a recipe is deleted or a checkout trip completes with unchecked items: every row sourced from this recipe. */
     List<UserCartItem> findBySourceRecipeId(Long sourceRecipeId);
+
+    /** Used when deleting a product entirely - every cart row (any user, any store, any source) referencing that item. */
+    List<UserCartItem> findByItem_Id(Long itemId);
 }

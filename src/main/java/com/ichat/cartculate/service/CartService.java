@@ -20,6 +20,7 @@ public class CartService {
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
     private final StorePriceRepository storePriceRepository;
+    private final UserStorePriceRepository userStorePriceRepository;
     private final RecipeRepository recipeRepository;
 
     public CartService(
@@ -28,6 +29,7 @@ public class CartService {
             StoreRepository storeRepository,
             UserRepository userRepository,
             StorePriceRepository storePriceRepository,
+            UserStorePriceRepository userStorePriceRepository,
             RecipeRepository recipeRepository
     ) {
         this.userCartItemRepository = userCartItemRepository;
@@ -35,6 +37,7 @@ public class CartService {
         this.storeRepository = storeRepository;
         this.userRepository = userRepository;
         this.storePriceRepository = storePriceRepository;
+        this.userStorePriceRepository = userStorePriceRepository;
         this.recipeRepository = recipeRepository;
     }
 
@@ -322,12 +325,7 @@ public class CartService {
     }
 
     private CartRowDto toDto(UserCartItem row) {
-        BigDecimal price = storePriceRepository
-                .findByStoreId(row.getStore().getId()).stream()
-                .filter(sp -> sp.getItem().getId().equals(row.getItem().getId()))
-                .findFirst()
-                .map(StorePrice::getPriceAmount)
-                .orElse(BigDecimal.ZERO);
+        BigDecimal price = resolvePriceForUser(row.getUser().getId(), row.getItem().getId(), row.getStore().getId());
 
         return new CartRowDto(
                 row.getId().toString(),
@@ -345,5 +343,25 @@ public class CartService {
                 row.getOverrideReason(),
                 row.getIsCheckedCheckout() != null && row.getIsCheckedCheckout()
         );
+    }
+
+    /**
+     * Feature: personal price overrides. Cart totals must reflect what
+     * THIS user actually pays, not the shared baseline everyone else
+     * sees - if they told the app their suki charges them differently,
+     * their cart needs to use that price, not the community one. Mirrors
+     * StorePriceService.getResolvedPricesForUser's resolution rule
+     * (override wins if present, else shared baseline, else zero) but
+     * looks up just the one (user, item, store) triple a cart row needs,
+     * rather than resolving the whole catalog at once.
+     */
+    private BigDecimal resolvePriceForUser(Long userId, Long itemId, Long storeId) {
+        return userStorePriceRepository.findByUser_IdAndItem_IdAndStore_Id(userId, itemId, storeId)
+                .map(UserStorePrice::getPriceAmount)
+                .orElseGet(() -> storePriceRepository.findByStoreId(storeId).stream()
+                        .filter(sp -> sp.getItem().getId().equals(itemId))
+                        .findFirst()
+                        .map(StorePrice::getPriceAmount)
+                        .orElse(BigDecimal.ZERO));
     }
 }

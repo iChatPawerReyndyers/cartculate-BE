@@ -33,4 +33,16 @@ public class StorePrice {
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal priceAmount;
+
+    /**
+     * Feature: tag each price with where it came from (receipt scan
+     * confirm vs manual entry in the Pricing tab), so the catalog can
+     * show which is which. Defaults MANUAL - columnDefinition gives
+     * Hibernate's ddl-auto=update a real DB-level default so adding this
+     * NOT NULL column doesn't fail against an already-populated
+     * store_prices table, same reasoning as Item.includeInCart.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10, columnDefinition = "varchar(10) default 'MANUAL'")
+    private PriceSource priceSource = PriceSource.MANUAL;
 }

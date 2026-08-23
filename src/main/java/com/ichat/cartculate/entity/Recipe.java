@@ -32,5 +32,5 @@ public class Recipe {
      * "Add to cart" action.
      */
     @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal currentMultiplier = BigDecimal.ZERO;
+    private BigDecimal currentMultiplier = BigDecimal.ONE;
 }

@@ -7,10 +7,7 @@ import lombok.AllArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserDto {
-    private String id;
-    private String name;
-    private String email;
+public class LoginRequest {
     private String username;
-    private String currentMode; // "HOME" | "AWAY"
+    private String password;
 }

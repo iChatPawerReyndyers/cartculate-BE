@@ -42,6 +42,7 @@ public class UserService {
                 user.getId().toString(),
                 user.getName(),
                 user.getEmail(),
+                user.getUsername(),
                 user.getCurrentMode().name()
         );
     }

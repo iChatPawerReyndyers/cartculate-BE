@@ -19,7 +19,15 @@ public class PriceCatalogController {
         this.storePriceService = storePriceService;
     }
 
-    /** GET /api/store-prices - every known item price, across all stores. Feeds the Price Catalog view. */
+    /**
+     * GET /api/store-prices - every known SHARED/baseline item price,
+     * across all stores - no personal overrides applied. The Price
+     * Catalog view (frontend PriceCatalogView.tsx) now calls
+     * GET /api/users/{userId}/store-prices instead (StorePriceController)
+     * to get personal-override-aware prices; this unscoped endpoint is
+     * kept for anything that genuinely wants the raw shared baseline
+     * regardless of who's asking.
+     */
     @GetMapping
     public ResponseEntity<List<StorePriceDto>> getAllPrices() {
         return ResponseEntity.ok(storePriceService.getAllPrices());

@@ -3,6 +3,7 @@ package com.ichat.cartculate.dto;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import com.ichat.cartculate.entity.PriceSource;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -25,5 +26,12 @@ public class UpdateStorePricesRequest {
     public static class PriceUpdate {
         private Long itemId;
         private BigDecimal priceAmount;
+        /**
+         * "SCAN" or "MANUAL". Nullable on the wire (older frontend builds
+         * or third-party callers might omit it) - StorePriceService falls
+         * back to MANUAL when null, since manual entry was the only path
+         * that existed before receipt scanning did.
+         */
+        private PriceSource source;
     }
 }
