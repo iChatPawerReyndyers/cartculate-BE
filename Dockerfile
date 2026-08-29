@@ -2,7 +2,8 @@
 FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /app
 COPY . .
-RUN mvn clean package -DskipTests
+# Grant execution permissions and use the wrapper script instead
+RUN chmod +x mvnw && ./mvnw clean package -DskipTests
 
 # --- Runtime Stage ---
 FROM eclipse-temurin:25-jre-jammy
