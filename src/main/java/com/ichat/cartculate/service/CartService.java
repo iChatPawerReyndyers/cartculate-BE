@@ -136,6 +136,71 @@ public class CartService {
     }
 
     /**
+     * Moves an item from one store to another - e.g. "I only need one
+     * thing from Puregold, might as well get it at S&R instead."
+     *
+     * Every underlying row for this item at the FROM store (whether a
+     * manual "Others" row or one sourced from a recipe) gets detached
+     * from its recipe, if any, and relocated to the TO store - same
+     * "strip sourceRecipe, becomes a plain manual row" pattern
+     * completeCheckout() already uses for unchecked recipe rows above.
+     * Detaching matters: upsertRecipeSourcedItem() is keyed by
+     * (item, store, recipe), so if this row stayed recipe-sourced, the
+     * NEXT time that recipe's multiplier changes, it would find nothing
+     * at the recipe's own resolved store anymore and silently CREATE A
+     * NEW row back there - orphaning this moved one instead of actually
+     * relocating it.
+     *
+     * Caveat worth knowing: this makes the move a one-time override for
+     * the current cart state, not a permanent reroute of that recipe's
+     * ingredient. If the user later changes that recipe's multiplier
+     * again, the ingredient reappears at its normal recipe-resolved
+     * store, since the recipe's own per-ingredient routing (category
+     * default / cheapest / explicit override - see ProductModal.tsx's
+     * hierarchy) has no memory of this one-off move. A permanent reroute
+     * would mean changing the ingredient's own routing, not the cart row.
+     *
+     * If an "Others" row already exists at the TO store for this same
+     * item, the moved quantity merges into it instead of leaving two
+     * separate rows for the same item at the same store.
+     */
+    public void moveCartItemToStore(Long userId, Long itemId, Long fromStoreId, Long toStoreId) {
+        List<UserCartItem> rowsAtFromStore = userCartItemRepository
+                .findByUserIdAndItemIdAndStoreId(userId, itemId, fromStoreId);
+        if (rowsAtFromStore.isEmpty()) return;
+
+        BigDecimal totalQty = rowsAtFromStore.stream()
+                .map(UserCartItem::getQuantity)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<UserCartItem> existingAtToStore = userCartItemRepository
+                .findByUserIdAndItemIdAndStoreIdAndSourceRecipeIsNull(userId, itemId, toStoreId);
+
+        if (!existingAtToStore.isEmpty()) {
+            UserCartItem target = existingAtToStore.get(0);
+            target.setQuantity(target.getQuantity().add(totalQty));
+            userCartItemRepository.save(target);
+            userCartItemRepository.deleteAll(rowsAtFromStore);
+        } else {
+            Store toStore = storeRepository.findById(toStoreId)
+                    .orElseThrow(() -> new IllegalArgumentException("Store not found: " + toStoreId));
+
+            // Relocate the first row in place (carrying the combined
+            // quantity) and remove any others - rare case where this item
+            // had more than one distinct source at the origin store.
+            UserCartItem primary = rowsAtFromStore.get(0);
+            primary.setStore(toStore);
+            primary.setSourceRecipe(null);
+            primary.setQuantity(totalQty);
+            userCartItemRepository.save(primary);
+
+            if (rowsAtFromStore.size() > 1) {
+                userCartItemRepository.deleteAll(rowsAtFromStore.subList(1, rowsAtFromStore.size()));
+            }
+        }
+    }
+
+    /**
      * Sets the pantry override for a specific cart row (Feature 2's
      * "Inventory Mitigation Engine" - the "Pantry Treasure Found" popup).
      * Reducing overridePantryQty below zero is rejected; capping above the

@@ -157,8 +157,24 @@ public class StorePriceService {
     }
 
     /** DELETE /api/users/{userId}/stores/{storeId}/prices/{itemId}/personal - clears this user's personal override, reverting them to the shared baseline (if any). */
+    /**
+     * BUGFIX: was a bare userStorePriceRepository.deleteById(...) - Spring
+     * Data JPA's deleteById() throws EmptyResultDataAccessException if the
+     * row doesn't exist, despite this method's callers (see
+     * ProductModal.tsx / storePriceApi.ts on the frontend) documenting it
+     * as a harmless no-op. A DELETE endpoint should be idempotent by REST
+     * convention regardless, and callers now rely on that: e.g. saving a
+     * product's price always attempts to clear any personal override for
+     * that item/store so the shared price actually takes effect, whether
+     * or not one ever existed. existsById() first avoids the exception
+     * without changing the outward behavior for the case that already
+     * worked (an override that DOES exist is still deleted).
+     */
     public void clearPersonalPrice(Long userId, Long storeId, Long itemId) {
-        userStorePriceRepository.deleteById(new UserStorePriceId(userId, itemId, storeId));
+        UserStorePriceId id = new UserStorePriceId(userId, itemId, storeId);
+        if (userStorePriceRepository.existsById(id)) {
+            userStorePriceRepository.deleteById(id);
+        }
     }
 
     /** Removes a single item's SHARED price at a store entirely - used by the Price Catalog editor's "remove store price" action. Does not touch any user's personal override for that item/store. */

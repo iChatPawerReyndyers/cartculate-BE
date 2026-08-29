@@ -21,6 +21,9 @@ public interface UserCartItemRepository extends JpaRepository<UserCartItem, Long
             Long userId, Long itemId, Long storeId, Long sourceRecipeId
     );
 
+    /** Used by "move item to a different store": every row for this item at this store, regardless of source (recipe-sourced or manual "Others") - a single consolidated card can be backed by more than one underlying row. */
+    List<UserCartItem> findByUserIdAndItemIdAndStoreId(Long userId, Long itemId, Long storeId);
+
     /** Used when a recipe is deleted or a checkout trip completes with unchecked items: every row sourced from this recipe. */
     List<UserCartItem> findBySourceRecipeId(Long sourceRecipeId);
 

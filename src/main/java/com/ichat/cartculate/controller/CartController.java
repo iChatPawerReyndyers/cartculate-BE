@@ -4,6 +4,7 @@ import com.ichat.cartculate.dto.CartAdjustRequest;
 import com.ichat.cartculate.dto.CartRowDto;
 import com.ichat.cartculate.dto.CheckoutStatusRequest;
 import com.ichat.cartculate.dto.CompleteCheckoutRequest;
+import com.ichat.cartculate.dto.MoveCartItemRequest;
 import com.ichat.cartculate.dto.PantryOverrideRequest;
 import com.ichat.cartculate.service.CartService;
 import org.springframework.http.ResponseEntity;
@@ -50,6 +51,23 @@ public class CartController {
         return ResponseEntity.ok(
                 cartService.setPantryOverride(cartItemId, request.getOverridePantryQty(), request.getOverrideReason())
         );
+    }
+
+    /**
+     * PATCH /api/users/{userId}/cart/move - long-press an item's card to
+     * relocate it from one store to another (e.g. "only need one thing
+     * from Puregold, might as well get it at S&R instead"). See
+     * CartService.moveCartItemToStore() for what this does to
+     * recipe-sourced rows and why it's a one-time override rather than a
+     * permanent reroute.
+     */
+    @PatchMapping("/move")
+    public ResponseEntity<Void> moveCartItem(
+            @PathVariable Long userId,
+            @RequestBody MoveCartItemRequest request
+    ) {
+        cartService.moveCartItemToStore(userId, request.getItemId(), request.getFromStoreId(), request.getToStoreId());
+        return ResponseEntity.noContent().build();
     }
 
     /** PATCH /api/users/{userId}/cart/items/{cartItemId}/checkout-status - checkbox during "Start Grocery". */

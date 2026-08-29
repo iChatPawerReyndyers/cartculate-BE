@@ -41,6 +41,20 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+        <!--
+          Just the crypto module (BCryptPasswordEncoder) for hashing
+          login passwords - deliberately NOT spring-boot-starter-security,
+          which would pull in a full filter chain, session handling, and
+          auto-configured login/logout endpoints this app isn't using
+          (see AuthService.java's own doc comment). Version is resolved
+          via spring-boot-starter-parent's dependency management, same as
+          every other Spring dependency above - no explicit version
+          needed.
+        -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
