@@ -11,4 +11,5 @@ WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 # Update this line to match your application's runtime port
 EXPOSE 8888
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Restricts Java heap to 70% of available container RAM to prevent OOM crashes
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=70.0", "-jar", "app.jar"]
