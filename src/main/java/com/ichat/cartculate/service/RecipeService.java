@@ -87,7 +87,27 @@ public class RecipeService {
         recipeIngredientRepository.deleteAll(recipeIngredientRepository.findByRecipeId(recipeId));
         saveIngredients(recipe, request.getIngredients());
 
+        syncCartForRecipe(recipe);
+
         return toDto(recipe);
+    }
+
+    private void syncCartForRecipe(Recipe recipe) {
+        List<RecipeIngredient> ingredients = recipeIngredientRepository.findByRecipeId(recipe.getId());
+        for (RecipeIngredient ingredient : ingredients) {
+            ResolvedStore resolved = resolveStore(ingredient);
+            if (resolved.store == null) continue;
+            BigDecimal quantity = ingredient.isAddToCart()
+                    ? ingredient.getBaseQuantity().multiply(recipe.getCurrentMultiplier())
+                    : BigDecimal.ZERO;
+            cartService.upsertRecipeSourcedItem(
+                    recipe.getUser().getId(),
+                    ingredient.getItem().getId(),
+                    resolved.store.getId(),
+                    recipe.getId(),
+                    quantity
+            );
+        }
     }
 
     /**
@@ -137,7 +157,9 @@ public class RecipeService {
             ResolvedStore resolved = resolveStore(ingredient);
             if (resolved.store == null) continue; // no known store/price for this item yet - nothing to sync
 
-            BigDecimal quantity = ingredient.getBaseQuantity().multiply(multiplier);
+                BigDecimal quantity = ingredient.isAddToCart()
+                    ? ingredient.getBaseQuantity().multiply(multiplier)
+                    : BigDecimal.ZERO;
             cartService.upsertRecipeSourcedItem(userId, ingredient.getItem().getId(), resolved.store.getId(), recipeId, quantity);
         }
 
@@ -155,6 +177,7 @@ public class RecipeService {
             ingredient.setBaseQuantity(input.getBaseQuantity());
             ingredient.setUnit(input.getUnit());
             ingredient.setOptional(input.isOptional());
+            ingredient.setAddToCart(input.getAddToCart() == null || input.getAddToCart());
 
             if (input.getTargetStoreId() != null) {
                 Store targetStore = storeRepository.findById(input.getTargetStoreId())
@@ -268,7 +291,8 @@ public class RecipeService {
                 resolved.store != null ? resolved.store.getName() : null,
                 resolved.price,
                 resolved.isCustomRouted,
-                ingredient.isOptional()
+                ingredient.isOptional(),
+                ingredient.isAddToCart()
         );
     }
 }

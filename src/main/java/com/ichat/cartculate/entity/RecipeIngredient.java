@@ -57,4 +57,8 @@ public class RecipeIngredient {
      */
     @Column(nullable = false)
     private boolean isOptional = false;
+
+    /** Whether recipe scaling should contribute this ingredient to the cart. */
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean addToCart = true;
 }

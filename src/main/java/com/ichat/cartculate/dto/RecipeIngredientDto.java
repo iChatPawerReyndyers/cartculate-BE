@@ -40,4 +40,7 @@ public class RecipeIngredientDto {
     /** True if this ingredient is optional (garnish, skippable spice, etc.) - see RecipeIngredient.java. */
     @JsonProperty("isOptional")
     private boolean isOptional;
+    /** True when recipe scaling should sync this ingredient to the cart. */
+    @JsonProperty("addToCart")
+    private boolean addToCart;
 }

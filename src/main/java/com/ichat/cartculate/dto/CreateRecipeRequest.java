@@ -25,5 +25,7 @@ public class CreateRecipeRequest {
         private Long targetStoreId;
         /** True if this ingredient is optional (garnish, skippable spice, etc.). Defaults to false. */
         private boolean isOptional;
+        /** True when recipe scaling should sync this ingredient to the cart. Defaults to true for older clients. */
+        private Boolean addToCart = true;
     }
 }
