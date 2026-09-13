@@ -58,4 +58,8 @@ public class Item {
      */
     @Column(nullable = false, columnDefinition = "boolean default true")
     private boolean includeInCart = true;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "default_store_id", nullable = true)
+    private Store defaultStore;
 }

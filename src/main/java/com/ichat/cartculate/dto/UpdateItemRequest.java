@@ -15,4 +15,6 @@ public class UpdateItemRequest {
     private String unit;
     /** True if this item should appear in the Recipe modal's ingredient picker. */
     private boolean isIngredient;
+    /** Explicit default store, or null to clear it. */
+    private Long defaultStoreId;
 }

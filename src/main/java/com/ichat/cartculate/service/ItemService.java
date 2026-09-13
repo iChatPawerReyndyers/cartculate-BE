@@ -4,11 +4,14 @@ import com.ichat.cartculate.dto.CreateItemRequest;
 import com.ichat.cartculate.dto.ItemDto;
 import com.ichat.cartculate.dto.UpdateItemRequest;
 import com.ichat.cartculate.entity.Item;
+import com.ichat.cartculate.entity.Store;
+import com.ichat.cartculate.repository.CategoryDefaultRepository;
 import com.ichat.cartculate.repository.ItemRepository;
 import com.ichat.cartculate.repository.RecipeIngredientRepository;
 import com.ichat.cartculate.repository.StorePriceRepository;
 import com.ichat.cartculate.repository.UserCartItemRepository;
 import com.ichat.cartculate.repository.UserStorePriceRepository;
+import com.ichat.cartculate.repository.StoreRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,19 +27,25 @@ public class ItemService {
     private final UserStorePriceRepository userStorePriceRepository;
     private final UserCartItemRepository userCartItemRepository;
     private final RecipeIngredientRepository recipeIngredientRepository;
+    private final CategoryDefaultRepository categoryDefaultRepository;
+    private final StoreRepository storeRepository;
 
     public ItemService(
             ItemRepository itemRepository,
             StorePriceRepository storePriceRepository,
             UserStorePriceRepository userStorePriceRepository,
             UserCartItemRepository userCartItemRepository,
-            RecipeIngredientRepository recipeIngredientRepository
+            RecipeIngredientRepository recipeIngredientRepository,
+            CategoryDefaultRepository categoryDefaultRepository,
+            StoreRepository storeRepository
     ) {
         this.itemRepository = itemRepository;
         this.storePriceRepository = storePriceRepository;
         this.userStorePriceRepository = userStorePriceRepository;
         this.userCartItemRepository = userCartItemRepository;
         this.recipeIngredientRepository = recipeIngredientRepository;
+        this.categoryDefaultRepository = categoryDefaultRepository;
+        this.storeRepository = storeRepository;
     }
 
     /** Master item catalog, sorted by name - used by pickers like the New Recipe ingredient selector. */
@@ -54,6 +63,7 @@ public class ItemService {
         item.setCategory(request.getCategory());
         item.setUnit(request.getUnit());
         item.setIngredient(request.isIngredient());
+        item.setDefaultStore(resolveDefaultStore(request.getDefaultStoreId(), request.getCategory()));
         return toDto(itemRepository.save(item));
     }
 
@@ -65,6 +75,8 @@ public class ItemService {
         item.setCategory(request.getCategory());
         item.setUnit(request.getUnit());
         item.setIngredient(request.isIngredient());
+        item.setDefaultStore(request.getDefaultStoreId() == null ? null : storeRepository.findById(request.getDefaultStoreId())
+            .orElseThrow(() -> new IllegalArgumentException("Store not found: " + request.getDefaultStoreId())));
         return toDto(itemRepository.save(item));
     }
 
@@ -107,6 +119,17 @@ public class ItemService {
     }
 
     private ItemDto toDto(Item item) {
-        return new ItemDto(item.getId().toString(), item.getName(), item.getCategory(), item.getUnit(), item.isIngredient(), item.isIncludeInCart());
+        return new ItemDto(item.getId().toString(), item.getName(), item.getCategory(), item.getUnit(), item.isIngredient(), item.isIncludeInCart(),
+                item.getDefaultStore() == null ? null : item.getDefaultStore().getId().toString());
+    }
+
+    private Store resolveDefaultStore(Long requestedStoreId, String category) {
+        if (requestedStoreId != null) {
+            return storeRepository.findById(requestedStoreId)
+                    .orElseThrow(() -> new IllegalArgumentException("Store not found: " + requestedStoreId));
+        }
+        return categoryDefaultRepository.findById(category)
+                .map(com.ichat.cartculate.entity.CategoryDefault::getDefaultStore)
+                .orElse(null);
     }
 }

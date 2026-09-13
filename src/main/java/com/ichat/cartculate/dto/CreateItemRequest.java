@@ -15,4 +15,6 @@ public class CreateItemRequest {
     private String unit;
     /** True if this item should appear in the Recipe modal's ingredient picker. */
     private boolean isIngredient;
+    /** Explicit default store; null uses the category default when available. */
+    private Long defaultStoreId;
 }

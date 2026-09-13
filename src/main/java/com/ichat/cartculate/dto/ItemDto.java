@@ -32,4 +32,5 @@ public class ItemDto {
     private boolean isIngredient;
     /** True if this item should appear in the Cart tab at all. See Item.java. */
     private boolean includeInCart;
+    private String defaultStoreId;
 }

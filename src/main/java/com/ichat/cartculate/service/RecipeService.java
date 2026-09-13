@@ -68,6 +68,7 @@ public class RecipeService {
         recipe = recipeRepository.save(recipe);
 
         saveIngredients(recipe, request.getIngredients());
+        syncCartForRecipe(recipe);
 
         return toDto(recipe);
     }
@@ -235,6 +236,12 @@ public class RecipeService {
             Store targetStore = ingredient.getTargetStore();
             BigDecimal price = resolvePriceForUser(userId, item.getId(), targetStore.getId());
             return new ResolvedStore(targetStore, price, true);
+        }
+
+        if (item.getDefaultStore() != null) {
+            Store defaultStore = item.getDefaultStore();
+            BigDecimal price = resolvePriceForUser(userId, item.getId(), defaultStore.getId());
+            return new ResolvedStore(defaultStore, price, true);
         }
 
         Store cheapestStore = null;
