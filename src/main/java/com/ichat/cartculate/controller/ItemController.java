@@ -1,7 +1,9 @@
 package com.ichat.cartculate.controller;
 
+import com.ichat.cartculate.dto.ConvertItemUnitRequest;
 import com.ichat.cartculate.dto.CreateItemRequest;
 import com.ichat.cartculate.dto.ItemDto;
+import com.ichat.cartculate.dto.ItemUnitUsageDto;
 import com.ichat.cartculate.dto.UpdateIncludeInCartRequest;
 import com.ichat.cartculate.dto.UpdateItemRequest;
 import com.ichat.cartculate.service.ItemService;
@@ -50,6 +52,21 @@ public class ItemController {
             @RequestBody UpdateIncludeInCartRequest request
     ) {
         return ResponseEntity.ok(itemService.updateIncludeInCart(itemId, request.isIncludeInCart()));
+    }
+
+    /** GET /api/items/{itemId}/unit-usage - what converting this product's unit would touch (recipes, prices, cart), for the app's preview. */
+    @GetMapping("/{itemId}/unit-usage")
+    public ResponseEntity<ItemUnitUsageDto> getUnitUsage(@PathVariable Long itemId) {
+        return ResponseEntity.ok(itemService.getUnitUsage(itemId));
+    }
+
+    /** POST /api/items/{itemId}/convert-unit - switches the product's unit and converts its recipes, prices and cart rows to match. See ItemService.convertUnit's javadoc. */
+    @PostMapping("/{itemId}/convert-unit")
+    public ResponseEntity<ItemDto> convertUnit(
+            @PathVariable Long itemId,
+            @RequestBody ConvertItemUnitRequest request
+    ) {
+        return ResponseEntity.ok(itemService.convertUnit(itemId, request));
     }
 
     /** DELETE /api/items/{itemId} - removes a product entirely, via the Price Catalog's delete action. Also removes its prices, cart rows, and recipe ingredient lines - see ItemService.deleteItem's javadoc. */

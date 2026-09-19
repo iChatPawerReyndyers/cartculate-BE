@@ -1,9 +1,15 @@
 package com.ichat.cartculate.service;
 
+import com.ichat.cartculate.dto.ConvertItemUnitRequest;
 import com.ichat.cartculate.dto.CreateItemRequest;
 import com.ichat.cartculate.dto.ItemDto;
+import com.ichat.cartculate.dto.ItemUnitUsageDto;
 import com.ichat.cartculate.dto.UpdateItemRequest;
 import com.ichat.cartculate.entity.Item;
+import com.ichat.cartculate.entity.RecipeIngredient;
+import com.ichat.cartculate.entity.StorePrice;
+import com.ichat.cartculate.entity.UserCartItem;
+import com.ichat.cartculate.entity.UserStorePrice;
 import com.ichat.cartculate.entity.Store;
 import com.ichat.cartculate.repository.CategoryDefaultRepository;
 import com.ichat.cartculate.repository.ItemRepository;
@@ -15,8 +21,11 @@ import com.ichat.cartculate.repository.StoreRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -76,7 +85,7 @@ public class ItemService {
         item.setUnit(request.getUnit());
         item.setIngredient(request.isIngredient());
         item.setDefaultStore(request.getDefaultStoreId() == null ? null : storeRepository.findById(request.getDefaultStoreId())
-            .orElseThrow(() -> new IllegalArgumentException("Store not found: " + request.getDefaultStoreId())));
+                .orElseThrow(() -> new IllegalArgumentException("Store not found: " + request.getDefaultStoreId())));
         return toDto(itemRepository.save(item));
     }
 
@@ -116,6 +125,125 @@ public class ItemService {
         userCartItemRepository.deleteAll(userCartItemRepository.findByItem_Id(itemId));
         recipeIngredientRepository.deleteAll(recipeIngredientRepository.findByItem_Id(itemId));
         itemRepository.deleteById(itemId);
+    }
+
+
+    // ------------------------------------------------------------------
+    // Unit conversion (e.g. a product priced per "kg" becomes "pc")
+    // ------------------------------------------------------------------
+
+    /**
+     * GET /api/items/{itemId}/unit-usage - what a unit conversion of this
+     * product would touch, for the app's "Convert unit" prompt preview.
+     */
+    @Transactional(readOnly = true)
+    public ItemUnitUsageDto getUnitUsage(Long itemId) {
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
+
+        List<ItemUnitUsageDto.RecipeLine> recipeLines = recipeIngredientRepository.findByItem_Id(itemId).stream()
+                .map(line -> {
+                    BigDecimal multiplier = toItemUnitMultiplier(line.getUnit(), item.getUnit());
+                    BigDecimal inItemUnit = multiplier == null ? null : line.getBaseQuantity().multiply(multiplier);
+                    return new ItemUnitUsageDto.RecipeLine(
+                            line.getRecipe().getRecipeName(), line.getBaseQuantity(), line.getUnit(), inItemUnit);
+                })
+                .sorted(Comparator.comparing(line -> line.getRecipeName().toLowerCase()))
+                .collect(Collectors.toList());
+
+        List<ItemUnitUsageDto.PriceLine> prices = storePriceRepository.findByItem_Id(itemId).stream()
+                .map(price -> new ItemUnitUsageDto.PriceLine(price.getStore().getName(), price.getPriceAmount()))
+                .sorted(Comparator.comparing(price -> price.getStoreName().toLowerCase()))
+                .collect(Collectors.toList());
+
+        int cartRows = userCartItemRepository.findByItem_Id(itemId).size();
+        return new ItemUnitUsageDto(recipeLines, prices, cartRows);
+    }
+
+    /**
+     * POST /api/items/{itemId}/convert-unit - switches a product to a new
+     * unit AND rewrites everything that was expressed in the old one, so
+     * costs and quantities stay correct:
+     *
+     *  - recipe ingredient lines: quantity x factor, unit = new unit. A line
+     *    in a related unit (g for a kg product, mL for a L product, and the
+     *    reverse) is converted through the old unit first. Lines in an
+     *    unrelated unit (e.g. "pack") are left untouched.
+     *  - shared store prices and personal price overrides: price / factor
+     *    (80.00 per kg with 8 pc per kg -> 10.00 per pc).
+     *  - cart rows (any user): quantity and pantry-override quantity x factor.
+     *  - the product's own unit.
+     *
+     * Purchase history is deliberately not touched. @Transactional so a
+     * failure part-way through rolls back everything instead of leaving
+     * some recipes converted and others not.
+     */
+    @Transactional
+    public ItemDto convertUnit(Long itemId, ConvertItemUnitRequest request) {
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
+
+        BigDecimal factor = request.getFactor();
+        if (factor == null || factor.signum() <= 0 || factor.compareTo(MAX_CONVERSION_FACTOR) > 0) {
+            throw new IllegalArgumentException("factor must be greater than 0 and at most " + MAX_CONVERSION_FACTOR);
+        }
+        String oldUnit = normalizeUnit(item.getUnit());
+        String newUnit = normalizeUnit(request.getNewUnit());
+        if (Objects.equals(oldUnit, newUnit)) {
+            throw new IllegalArgumentException("The new unit is the same as the current unit");
+        }
+
+        for (RecipeIngredient line : recipeIngredientRepository.findByItem_Id(itemId)) {
+            BigDecimal multiplier = toItemUnitMultiplier(line.getUnit(), oldUnit);
+            if (multiplier == null) {
+                continue; // unrelated unit - leave this line as the user wrote it
+            }
+            line.setBaseQuantity(line.getBaseQuantity().multiply(multiplier).multiply(factor)
+                    .setScale(3, RoundingMode.HALF_UP));
+            line.setUnit(newUnit);
+        }
+
+        for (StorePrice price : storePriceRepository.findByItem_Id(itemId)) {
+            price.setPriceAmount(price.getPriceAmount().divide(factor, 2, RoundingMode.HALF_UP));
+        }
+        for (UserStorePrice price : userStorePriceRepository.findByItem_Id(itemId)) {
+            price.setPriceAmount(price.getPriceAmount().divide(factor, 2, RoundingMode.HALF_UP));
+        }
+
+        for (UserCartItem row : userCartItemRepository.findByItem_Id(itemId)) {
+            row.setQuantity(row.getQuantity().multiply(factor).setScale(3, RoundingMode.HALF_UP));
+            row.setOverridePantryQty(row.getOverridePantryQty().multiply(factor).setScale(3, RoundingMode.HALF_UP));
+        }
+
+        item.setUnit(newUnit);
+        return toDto(itemRepository.save(item));
+    }
+
+    private static final BigDecimal MAX_CONVERSION_FACTOR = new BigDecimal("100000");
+
+    private static String normalizeUnit(String unit) {
+        return unit == null || unit.isBlank() ? null : unit.trim();
+    }
+
+    /**
+     * The number to multiply a recipe line's quantity by to express it in
+     * the product's unit: 1 when the units match, 0.001 for g -> kg or
+     * mL -> L, 1000 for kg -> g or L -> mL. Null when the two units aren't
+     * related (so the line can't be converted).
+     */
+    private static BigDecimal toItemUnitMultiplier(String lineUnit, String itemUnit) {
+        String line = normalizeUnit(lineUnit);
+        String item = normalizeUnit(itemUnit);
+        if (line == null && item == null) return BigDecimal.ONE;
+        if (line == null || item == null) return null;
+        line = line.toLowerCase();
+        item = item.toLowerCase();
+        if (line.equals(item)) return BigDecimal.ONE;
+        if (line.equals("g") && item.equals("kg")) return new BigDecimal("0.001");
+        if (line.equals("kg") && item.equals("g")) return new BigDecimal("1000");
+        if (line.equals("ml") && item.equals("l")) return new BigDecimal("0.001");
+        if (line.equals("l") && item.equals("ml")) return new BigDecimal("1000");
+        return null;
     }
 
     private ItemDto toDto(Item item) {
