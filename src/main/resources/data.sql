@@ -293,3 +293,125 @@ INSERT INTO store_prices (item_id, store_id, price_amount) VALUES
 END IF;
 END $seed$;
 @@
+
+-- ════════════════════════════════════════════════════════════════════
+-- Pasig market catalog (added later) - shared products + prices for EVERY
+-- user, from the "Pasig Mega Market" price list.
+--
+-- Unlike the block above (which only runs into an EMPTY database), this
+-- one is meant to run on an EXISTING database too, so it:
+--   * re-syncs the id counters first (the block above inserts explicit ids,
+--     which leaves them behind and would make the inserts below collide),
+--   * reuses an item that already exists by name (ignoring capitals) instead
+--     of duplicating it - it only adds this store's price if missing,
+--   * records itself in data_seed_log so it runs ONCE; products deleted
+--     later are not re-added on the next restart.
+-- To change the store name, edit v_store_name BEFORE the first run.
+-- To run it again, delete its row from data_seed_log.
+-- ════════════════════════════════════════════════════════════════════
+DO $pasig$
+DECLARE
+v_seed_key   CONSTANT TEXT := 'pasig-market-catalog-v1';
+    v_store_name CONSTANT TEXT := 'Pasig Mega Market';
+    v_store_id   BIGINT;
+    v_item_id    BIGINT;
+    r            RECORD;
+BEGIN
+CREATE TABLE IF NOT EXISTS data_seed_log (
+                                             seed_key   VARCHAR(100) PRIMARY KEY,
+    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+IF EXISTS (SELECT 1 FROM data_seed_log WHERE seed_key = v_seed_key) THEN
+        RETURN;
+END IF;
+
+    PERFORM setval(pg_get_serial_sequence('stores', 'id'), COALESCE((SELECT MAX(id) FROM stores), 0) + 1, false);
+    PERFORM setval(pg_get_serial_sequence('items', 'id'), COALESCE((SELECT MAX(id) FROM items), 0) + 1, false);
+
+SELECT id INTO v_store_id FROM stores WHERE lower(name) = lower(v_store_name) LIMIT 1;
+IF v_store_id IS NULL THEN
+        INSERT INTO stores (name) VALUES (v_store_name) RETURNING id INTO v_store_id;
+END IF;
+
+FOR r IN
+SELECT * FROM (VALUES
+                   ('Pork Kasim', 'Meat', 'kg', 240.00),
+                   ('Pork Tenga', 'Meat', 'kg', 170.00),
+                   ('Pork Pigue', 'Meat', 'kg', 200.00),
+                   ('Pork Pisngi / Maskara', 'Meat', 'kg', 235.00),
+                   ('Pork Liempo', 'Meat', 'kg', 320.00),
+                   ('Pork Lomo', 'Meat', 'kg', 345.00),
+                   ('Whole Chicken', 'Meat', 'kg', 190.00),
+                   ('Chicken Choice Cuts', 'Meat', 'kg', 215.00),
+                   ('Chicken Drumsticks/Wings', 'Meat', 'kg', 225.00),
+                   ('Chicken Liver & Gizzard', 'Meat', 'kg', 220.00),
+                   ('Frozen Beef Balls/Patties', 'Refrigerated/Frozen Goods', 'pack', 170.00),
+                   ('Frozen Nuggets/Hotdogs', 'Refrigerated/Frozen Goods', 'pack', 195.00),
+                   ('Tilapia', 'Seafood', 'kg', 145.00),
+                   ('Bangus', 'Seafood', 'kg', 200.00),
+                   ('Galunggong', 'Seafood', 'kg', 230.00),
+                   ('Shrimp', 'Seafood', 'kg', 415.00),
+                   ('Tahong', 'Seafood', 'kg', 115.00),
+                   ('Hito', 'Seafood', 'kg', 200.00),
+                   ('Tinapa / Daing na Biya', 'Seafood', 'pack', 60.00),
+                   ('Green Munggo Beans', 'Dry Goods', 'kg', 88.00),
+                   ('Chicharon Bits / Skin', 'Dry Goods', 'pack', 45.00),
+                   ('Dahon ng Sili', 'Vegetables', 'bundle', 15.00),
+                   ('Malunggay Leaves', 'Vegetables', 'bundle', 15.00),
+                   ('Talbos ng Kamote', 'Vegetables', 'bundle', 20.00),
+                   ('Dahon ng Kangkong', 'Vegetables', 'bundle', 15.00),
+                   ('Native Pechay', 'Vegetables', 'bundle', 20.00),
+                   ('Alugbati', 'Vegetables', 'bundle', 18.00),
+                   ('Saluyot', 'Vegetables', 'bundle', 15.00),
+                   ('Pako', 'Vegetables', 'bundle', 33.00),
+                   ('Mustasa', 'Vegetables', 'bundle', 20.00),
+                   ('Chayote', 'Vegetables', 'kg', 95.00),
+                   ('Green Papaya', 'Vegetables', 'kg', 50.00),
+                   ('Ampalaya', 'Vegetables', 'kg', 85.00),
+                   ('Sitaw', 'Vegetables', 'bundle', 30.00),
+                   ('Kalabasa', 'Vegetables', 'kg', 50.00),
+                   ('Eggplant', 'Vegetables', 'kg', 75.00),
+                   ('Okra', 'Vegetables', 'pack', 20.00),
+                   ('Repolyo', 'Vegetables', 'kg', 100.00),
+                   ('Carrots', 'Vegetables', 'pc', 25.00),
+                   ('Potato', 'Vegetables', 'pc', 25.00),
+                   ('Cauliflower', 'Vegetables', 'kg', 260.00),
+                   ('Broccoli', 'Vegetables', 'kg', 240.00),
+                   ('Chicharo', 'Vegetables', 'pack', 65.00),
+                   ('Young Corn', 'Vegetables', 'pack', 40.00),
+                   ('Bell Pepper', 'Vegetables', 'pc', 20.00),
+                   ('Quail Eggs', 'Pantry', 'tray', 80.00),
+                   ('Garlic', 'Vegetables', 'pack', 20.00),
+                   ('Onion', 'Vegetables', 'pack', 20.00),
+                   ('Ginger', 'Vegetables', 'kg', 120.00),
+                   ('Tomatoes', 'Vegetables', 'pack', 20.00),
+                   ('Bagoong Alamang', 'Condiments', 'pc', 70.00),
+                   ('Siling Haba', 'Vegetables', 'kg', 125.00),
+                   ('Laing', 'Vegetables', 'pack', 50.00),
+                   ('Rambutan', 'Fruits', 'kg', 115.00),
+                   ('Avocado', 'Fruits', 'kg', 150.00),
+                   ('Pineapple', 'Fruits', 'pc', 80.00),
+                   ('Orange', 'Fruits', 'pc', 20.00),
+                   ('Lakatan Banana', 'Fruits', 'kg', 90.00),
+                   ('Latundan Banana', 'Fruits', 'kg', 70.00),
+                   ('Saba Banana (kg)', 'Fruits', 'kg', 60.00),
+                   ('Saba Banana (pc)', 'Fruits', 'pc', 4.00)
+              ) AS t (name, category, unit, price)
+    LOOP
+SELECT id INTO v_item_id FROM items WHERE lower(name) = lower(r.name) ORDER BY id LIMIT 1;
+IF v_item_id IS NULL THEN
+            INSERT INTO items (name, category, unit, is_ingredient, include_in_cart, default_store_id)
+            VALUES (r.name, r.category, r.unit, TRUE, TRUE, v_store_id)
+            RETURNING id INTO v_item_id;
+END IF;
+
+INSERT INTO store_prices (item_id, store_id, price_amount, price_source)
+VALUES (v_item_id, v_store_id, r.price, 'MANUAL')
+    ON CONFLICT (item_id, store_id) DO NOTHING;
+END LOOP;
+
+INSERT INTO data_seed_log (seed_key) VALUES (v_seed_key);
+END
+$pasig$;
+@@
