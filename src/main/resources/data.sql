@@ -415,3 +415,141 @@ INSERT INTO data_seed_log (seed_key) VALUES (v_seed_key);
 END
 $pasig$;
 @@
+
+-- ════════════════════════════════════════════════════════════════════
+-- Ingredient flags: products that should NOT show in the recipe
+-- ingredient picker (drinks, snacks, desserts, dairy treats, ready-to-eat
+-- foods, cup noodles, and the fruits eaten as-is). Everything else keeps
+-- its current is_ingredient value.
+--
+-- Runs ONCE (recorded in data_seed_log) so that if a product is later
+-- ticked back to "Ingredient" in the Pricing tab it is not switched off
+-- again on the next restart. To run it again, delete its row from
+-- data_seed_log. Names are matched ignoring capitals; the LIKE patterns
+-- cover "Nestle in general" (Nestea / Nescafe / Nestle), "any vodka" and
+-- "any Tang".
+-- ════════════════════════════════════════════════════════════════════
+DO $ingredientflags$
+DECLARE
+v_seed_key CONSTANT TEXT := 'ingredient-flags-v1';
+BEGIN
+CREATE TABLE IF NOT EXISTS data_seed_log (
+                                             seed_key   VARCHAR(100) PRIMARY KEY,
+    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+IF EXISTS (SELECT 1 FROM data_seed_log WHERE seed_key = v_seed_key) THEN
+        RETURN;
+END IF;
+
+UPDATE items
+SET is_ingredient = FALSE
+WHERE is_ingredient = TRUE
+  AND (
+    lower(name) IN (
+                    'arla full cream milk',
+                    'arla low fat milk',
+                    'butterkist',
+                    'cebu dried mango slices',
+                    'chocolate marble ring cake',
+                    'chocolate strawberry marble ring cake',
+                    'coca-cola',
+                    'coca-cola regular',
+                    'coca-cola zero sugar',
+                    'cowhead regular milk',
+                    'dan d pak popcorn kernels',
+                    'del monte pineapple juice',
+                    'fanta grape',
+                    'fanta orange',
+                    'guava candy',
+                    'hbaf honey butter almond',
+                    'imaba yellowfin tuna pudding',
+                    'indomie mi goreng',
+                    'kitkat matcha',
+                    'lakatan banana',
+                    'latundan banana',
+                    'lotte milk ice cream',
+                    'lucky me! supreme mini cup la paz batchoy',
+                    'lucky me! supreme mini cup bulalo',
+                    'minute maid blue',
+                    'minute maid fresh orange',
+                    'minute maid pitcher',
+                    'neubake white bread',
+                    'nissin cup mini sotanghon chicken',
+                    'orange',
+                    'philippine dried mango chips',
+                    'rambutan',
+                    'saba banana (kg)',
+                    'selecta fortified milk',
+                    'smirnoff mule',
+                    'suncrest fudge barr dark chocolate',
+                    'sunlly cola',
+                    'tostitos chunky salsa',
+                    'trolli kiss',
+                    'yakult'
+        )
+        OR lower(name) LIKE 'nestea%'
+        OR lower(name) LIKE 'nescaf%'
+        OR lower(name) LIKE 'nestle%'
+        OR lower(name) LIKE '%vodka%'
+        OR lower(name) LIKE 'tang %'
+        OR lower(name) LIKE 'hair color%'
+    );
+
+INSERT INTO data_seed_log (seed_key) VALUES (v_seed_key);
+END
+$ingredientflags$;
+@@
+
+-- ════════════════════════════════════════════════════════════════════
+-- Default store per category (the Pricing tab's "Category defaults"):
+--   * Fruits, Vegetables, Meat, Seafood, Dry Goods -> the Pasig store
+--   * every other category                          -> Puregold
+-- These are the defaults the "Select ingredient" / "Add product" forms
+-- pre-select for a NEW product, and they never change existing products.
+--
+-- Covers the app's built-in category list plus every category already used
+-- by a product. A category someone has ALREADY configured keeps its own
+-- store (only a missing one is filled in). Runs ONCE (recorded in
+-- data_seed_log). If the Pasig or Puregold store can't be found it does
+-- nothing and simply tries again on the next start.
+-- ════════════════════════════════════════════════════════════════════
+DO $categorydefaults$
+DECLARE
+v_seed_key CONSTANT TEXT := 'category-default-stores-v1';
+    v_puregold BIGINT;
+    v_pasig    BIGINT;
+BEGIN
+CREATE TABLE IF NOT EXISTS data_seed_log (
+                                             seed_key   VARCHAR(100) PRIMARY KEY,
+    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+IF EXISTS (SELECT 1 FROM data_seed_log WHERE seed_key = v_seed_key) THEN
+        RETURN;
+END IF;
+
+SELECT id INTO v_puregold FROM stores WHERE lower(name) = 'puregold' LIMIT 1;
+SELECT id INTO v_pasig    FROM stores WHERE lower(name) LIKE 'pasig%' ORDER BY id LIMIT 1;
+IF v_puregold IS NULL OR v_pasig IS NULL THEN
+        RAISE NOTICE 'category defaults: Puregold or Pasig store not found yet, skipping for now';
+        RETURN;
+END IF;
+
+INSERT INTO category_defaults (category, default_store_id, default_is_ingredient)
+SELECT c.category,
+       CASE WHEN c.category IN ('Fruits', 'Vegetables', 'Meat', 'Seafood', 'Dry Goods')
+                THEN v_pasig ELSE v_puregold END,
+       FALSE
+FROM (
+         SELECT unnest(ARRAY['Fruits', 'Vegetables', 'Refrigerated/Frozen Goods', 'Condiments/Sauces', 'Spices', 'Canned Goods', 'Noodles', 'Dairy', 'Meat', 'Seafood', 'Drinks', 'Snacks', 'Pets', 'Personal Care', 'Medicine', 'Cleaning', 'Office/School Supplies', 'Others']) AS category
+         UNION
+         SELECT DISTINCT category FROM items WHERE category IS NOT NULL AND category <> ''
+     ) c
+    ON CONFLICT (category) DO UPDATE
+                                  SET default_store_id = COALESCE(category_defaults.default_store_id, EXCLUDED.default_store_id);
+
+INSERT INTO data_seed_log (seed_key) VALUES (v_seed_key);
+END
+$categorydefaults$;
+@@
