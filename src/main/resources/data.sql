@@ -553,3 +553,55 @@ INSERT INTO data_seed_log (seed_key) VALUES (v_seed_key);
 END
 $categorydefaults$;
 @@
+
+-- ════════════════════════════════════════════════════════════════════
+-- Category defaults become PER-USER: copies whatever is already in the
+-- old, app-wide "category_defaults" table (set by earlier blocks above,
+-- e.g. Puregold/Pasig per category, plus anything configured by hand in
+-- the Pricing tab) into the new "user_category_defaults" table, scoped to
+-- the first/only user. From here on the app reads and writes only the
+-- per-user table (see CategoryDefaultService.java); the old table is left
+-- in place, untouched, purely as a historical record.
+--
+-- Depends on Hibernate having already created "user_category_defaults"
+-- (ddl-auto=update runs before this file - see application.properties).
+-- If that table isn't there yet for some reason, this simply does nothing
+-- and tries again on the next start. Runs ONCE (recorded in
+-- data_seed_log), so a category a user later clears is not restored.
+-- ════════════════════════════════════════════════════════════════════
+DO $categorydefaultsperuser$
+DECLARE
+v_seed_key CONSTANT TEXT := 'category-defaults-per-user-v1';
+    v_user_id  BIGINT;
+BEGIN
+CREATE TABLE IF NOT EXISTS data_seed_log (
+                                             seed_key   VARCHAR(100) PRIMARY KEY,
+    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+IF EXISTS (SELECT 1 FROM data_seed_log WHERE seed_key = v_seed_key) THEN
+        RETURN;
+END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_category_defaults') THEN
+        RAISE NOTICE 'category defaults per-user: user_category_defaults table not created yet, skipping for now';
+        RETURN;
+END IF;
+
+SELECT id INTO v_user_id FROM users ORDER BY id LIMIT 1;
+IF v_user_id IS NULL THEN
+        RETURN;
+END IF;
+
+INSERT INTO user_category_defaults (user_id, category, default_store_id, default_is_ingredient)
+SELECT v_user_id, cd.category, cd.default_store_id, cd.default_is_ingredient
+FROM category_defaults cd
+WHERE NOT EXISTS (
+    SELECT 1 FROM user_category_defaults ucd
+    WHERE ucd.user_id = v_user_id AND ucd.category = cd.category
+);
+
+INSERT INTO data_seed_log (seed_key) VALUES (v_seed_key);
+END
+$categorydefaultsperuser$;
+@@
