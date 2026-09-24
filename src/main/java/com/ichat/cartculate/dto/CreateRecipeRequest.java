@@ -13,6 +13,8 @@ import java.util.List;
 public class CreateRecipeRequest {
     private String name;
     private List<IngredientInput> ingredients;
+    /** Optional free-text notes (prep steps, reminders, etc.). */
+    private String notes;
 
     @Data
     @NoArgsConstructor

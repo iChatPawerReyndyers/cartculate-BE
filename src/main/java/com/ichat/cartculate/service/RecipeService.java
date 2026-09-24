@@ -59,6 +59,7 @@ public class RecipeService {
 
         Recipe recipe = new Recipe();
         recipe.setRecipeName(request.getName());
+        recipe.setNotes(normalizeNotes(request.getNotes()));
         recipe.setUser(user);
         // Default the multiplier to 1x (not 0x) so a freshly-created recipe
         // immediately contributes its per-batch ingredients to the Cart
@@ -79,6 +80,7 @@ public class RecipeService {
                 .orElseThrow(() -> new IllegalArgumentException("Recipe not found: " + recipeId));
 
         recipe.setRecipeName(request.getName());
+        recipe.setNotes(normalizeNotes(request.getNotes()));
         recipe = recipeRepository.save(recipe);
 
         // Replace ingredients wholesale - simpler and safer than diffing,
@@ -200,8 +202,16 @@ public class RecipeService {
                 recipe.getId().toString(),
                 recipe.getRecipeName(),
                 ingredientDtos,
-                recipe.getCurrentMultiplier()
+                recipe.getCurrentMultiplier(),
+                recipe.getNotes()
         );
+    }
+
+    /** Blank/whitespace-only notes are stored as null, same convention as Item.unit elsewhere in this codebase. */
+    private static String normalizeNotes(String notes) {
+        if (notes == null) return null;
+        String trimmed = notes.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     /** Small holder for a resolved store + price, shared by toIngredientDto() and updateMultiplier(). */

@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
@@ -27,7 +28,9 @@ import java.util.List;
  * data.sql has run. It only ever moves a sequence forward to MAX(id) + 1,
  * so it is safe to run repeatedly and never touches any row data.
  */
+/** @Order(1): must run BEFORE any runner that inserts rows (e.g. PasigMarketSeedRunner), so the id counters are already correct. */
 @Component
+@Order(1)
 public class SequenceSyncRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(SequenceSyncRunner.class);

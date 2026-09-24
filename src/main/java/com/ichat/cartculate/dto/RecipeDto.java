@@ -16,4 +16,6 @@ public class RecipeDto {
     private List<RecipeIngredientDto> ingredients;
     /** Scaler tracked directly on the recipe card (e.g. "x2" via +/- buttons). Fractional values allowed. */
     private BigDecimal currentMultiplier;
+    /** Optional free-text notes (prep steps, reminders, etc.). Null when the recipe has none. */
+    private String notes;
 }

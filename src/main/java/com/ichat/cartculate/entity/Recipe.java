@@ -33,4 +33,8 @@ public class Recipe {
      */
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal currentMultiplier = BigDecimal.ONE;
+
+    /** Optional free-text notes (prep steps, reminders, etc.), shown on the recipe card. Null/blank means no notes. */
+    @Column(columnDefinition = "TEXT")
+    private String notes;
 }

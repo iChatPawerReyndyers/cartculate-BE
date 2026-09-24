@@ -12,4 +12,6 @@ import java.util.List;
 public class UpdateRecipeRequest {
     private String name;
     private List<CreateRecipeRequest.IngredientInput> ingredients;
+    /** Optional free-text notes (prep steps, reminders, etc.). Null/blank clears any existing notes. */
+    private String notes;
 }

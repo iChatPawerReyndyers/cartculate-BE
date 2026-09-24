@@ -311,107 +311,107 @@ END $seed$;
 -- ════════════════════════════════════════════════════════════════════
 DO $pasig$
 DECLARE
-v_seed_key   CONSTANT TEXT := 'pasig-market-catalog-v1';
+    v_seed_key   CONSTANT TEXT := 'pasig-market-catalog-v1';
     v_store_name CONSTANT TEXT := 'Pasig Mega Market';
     v_store_id   BIGINT;
     v_item_id    BIGINT;
     r            RECORD;
 BEGIN
-CREATE TABLE IF NOT EXISTS data_seed_log (
-                                             seed_key   VARCHAR(100) PRIMARY KEY,
-    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    CREATE TABLE IF NOT EXISTS data_seed_log (
+        seed_key   VARCHAR(100) PRIMARY KEY,
+        applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
-IF EXISTS (SELECT 1 FROM data_seed_log WHERE seed_key = v_seed_key) THEN
+    IF EXISTS (SELECT 1 FROM data_seed_log WHERE seed_key = v_seed_key) THEN
         RETURN;
-END IF;
+    END IF;
 
     PERFORM setval(pg_get_serial_sequence('stores', 'id'), COALESCE((SELECT MAX(id) FROM stores), 0) + 1, false);
     PERFORM setval(pg_get_serial_sequence('items', 'id'), COALESCE((SELECT MAX(id) FROM items), 0) + 1, false);
 
-SELECT id INTO v_store_id FROM stores WHERE lower(name) = lower(v_store_name) LIMIT 1;
-IF v_store_id IS NULL THEN
+    SELECT id INTO v_store_id FROM stores WHERE lower(name) = lower(v_store_name) LIMIT 1;
+    IF v_store_id IS NULL THEN
         INSERT INTO stores (name) VALUES (v_store_name) RETURNING id INTO v_store_id;
-END IF;
+    END IF;
 
-FOR r IN
-SELECT * FROM (VALUES
-                   ('Pork Kasim', 'Meat', 'kg', 240.00),
-                   ('Pork Tenga', 'Meat', 'kg', 170.00),
-                   ('Pork Pigue', 'Meat', 'kg', 200.00),
-                   ('Pork Pisngi / Maskara', 'Meat', 'kg', 235.00),
-                   ('Pork Liempo', 'Meat', 'kg', 320.00),
-                   ('Pork Lomo', 'Meat', 'kg', 345.00),
-                   ('Whole Chicken', 'Meat', 'kg', 190.00),
-                   ('Chicken Choice Cuts', 'Meat', 'kg', 215.00),
-                   ('Chicken Drumsticks/Wings', 'Meat', 'kg', 225.00),
-                   ('Chicken Liver & Gizzard', 'Meat', 'kg', 220.00),
-                   ('Frozen Beef Balls/Patties', 'Refrigerated/Frozen Goods', 'pack', 170.00),
-                   ('Frozen Nuggets/Hotdogs', 'Refrigerated/Frozen Goods', 'pack', 195.00),
-                   ('Tilapia', 'Seafood', 'kg', 145.00),
-                   ('Bangus', 'Seafood', 'kg', 200.00),
-                   ('Galunggong', 'Seafood', 'kg', 230.00),
-                   ('Shrimp', 'Seafood', 'kg', 415.00),
-                   ('Tahong', 'Seafood', 'kg', 115.00),
-                   ('Hito', 'Seafood', 'kg', 200.00),
-                   ('Tinapa / Daing na Biya', 'Seafood', 'pack', 60.00),
-                   ('Green Munggo Beans', 'Dry Goods', 'kg', 88.00),
-                   ('Chicharon Bits / Skin', 'Dry Goods', 'pack', 45.00),
-                   ('Dahon ng Sili', 'Vegetables', 'bundle', 15.00),
-                   ('Malunggay Leaves', 'Vegetables', 'bundle', 15.00),
-                   ('Talbos ng Kamote', 'Vegetables', 'bundle', 20.00),
-                   ('Dahon ng Kangkong', 'Vegetables', 'bundle', 15.00),
-                   ('Native Pechay', 'Vegetables', 'bundle', 20.00),
-                   ('Alugbati', 'Vegetables', 'bundle', 18.00),
-                   ('Saluyot', 'Vegetables', 'bundle', 15.00),
-                   ('Pako', 'Vegetables', 'bundle', 33.00),
-                   ('Mustasa', 'Vegetables', 'bundle', 20.00),
-                   ('Chayote', 'Vegetables', 'kg', 95.00),
-                   ('Green Papaya', 'Vegetables', 'kg', 50.00),
-                   ('Ampalaya', 'Vegetables', 'kg', 85.00),
-                   ('Sitaw', 'Vegetables', 'bundle', 30.00),
-                   ('Kalabasa', 'Vegetables', 'kg', 50.00),
-                   ('Eggplant', 'Vegetables', 'kg', 75.00),
-                   ('Okra', 'Vegetables', 'pack', 20.00),
-                   ('Repolyo', 'Vegetables', 'kg', 100.00),
-                   ('Carrots', 'Vegetables', 'pc', 25.00),
-                   ('Potato', 'Vegetables', 'pc', 25.00),
-                   ('Cauliflower', 'Vegetables', 'kg', 260.00),
-                   ('Broccoli', 'Vegetables', 'kg', 240.00),
-                   ('Chicharo', 'Vegetables', 'pack', 65.00),
-                   ('Young Corn', 'Vegetables', 'pack', 40.00),
-                   ('Bell Pepper', 'Vegetables', 'pc', 20.00),
-                   ('Quail Eggs', 'Pantry', 'tray', 80.00),
-                   ('Garlic', 'Vegetables', 'pack', 20.00),
-                   ('Onion', 'Vegetables', 'pack', 20.00),
-                   ('Ginger', 'Vegetables', 'kg', 120.00),
-                   ('Tomatoes', 'Vegetables', 'pack', 20.00),
-                   ('Bagoong Alamang', 'Condiments', 'pc', 70.00),
-                   ('Siling Haba', 'Vegetables', 'kg', 125.00),
-                   ('Laing', 'Vegetables', 'pack', 50.00),
-                   ('Rambutan', 'Fruits', 'kg', 115.00),
-                   ('Avocado', 'Fruits', 'kg', 150.00),
-                   ('Pineapple', 'Fruits', 'pc', 80.00),
-                   ('Orange', 'Fruits', 'pc', 20.00),
-                   ('Lakatan Banana', 'Fruits', 'kg', 90.00),
-                   ('Latundan Banana', 'Fruits', 'kg', 70.00),
-                   ('Saba Banana (kg)', 'Fruits', 'kg', 60.00),
-                   ('Saba Banana (pc)', 'Fruits', 'pc', 4.00)
-              ) AS t (name, category, unit, price)
+    FOR r IN
+        SELECT * FROM (VALUES
+            ('Pork Kasim', 'Meat', 'kg', 240.00),
+            ('Pork Tenga', 'Meat', 'kg', 170.00),
+            ('Pork Pigue', 'Meat', 'kg', 200.00),
+            ('Pork Pisngi / Maskara', 'Meat', 'kg', 235.00),
+            ('Pork Liempo', 'Meat', 'kg', 320.00),
+            ('Pork Lomo', 'Meat', 'kg', 345.00),
+            ('Whole Chicken', 'Meat', 'kg', 190.00),
+            ('Chicken Choice Cuts', 'Meat', 'kg', 215.00),
+            ('Chicken Drumsticks/Wings', 'Meat', 'kg', 225.00),
+            ('Chicken Liver & Gizzard', 'Meat', 'kg', 220.00),
+            ('Frozen Beef Balls/Patties', 'Refrigerated/Frozen Goods', 'pack', 170.00),
+            ('Frozen Nuggets/Hotdogs', 'Refrigerated/Frozen Goods', 'pack', 195.00),
+            ('Tilapia', 'Seafood', 'kg', 145.00),
+            ('Bangus', 'Seafood', 'kg', 200.00),
+            ('Galunggong', 'Seafood', 'kg', 230.00),
+            ('Shrimp', 'Seafood', 'kg', 415.00),
+            ('Tahong', 'Seafood', 'kg', 115.00),
+            ('Hito', 'Seafood', 'kg', 200.00),
+            ('Tinapa / Daing na Biya', 'Seafood', 'pack', 60.00),
+            ('Green Munggo Beans', 'Dry Goods', 'kg', 88.00),
+            ('Chicharon Bits / Skin', 'Dry Goods', 'pack', 45.00),
+            ('Dahon ng Sili', 'Vegetables', 'bundle', 15.00),
+            ('Malunggay Leaves', 'Vegetables', 'bundle', 15.00),
+            ('Talbos ng Kamote', 'Vegetables', 'bundle', 20.00),
+            ('Dahon ng Kangkong', 'Vegetables', 'bundle', 15.00),
+            ('Native Pechay', 'Vegetables', 'bundle', 20.00),
+            ('Alugbati', 'Vegetables', 'bundle', 18.00),
+            ('Saluyot', 'Vegetables', 'bundle', 15.00),
+            ('Pako', 'Vegetables', 'bundle', 33.00),
+            ('Mustasa', 'Vegetables', 'bundle', 20.00),
+            ('Chayote', 'Vegetables', 'kg', 95.00),
+            ('Green Papaya', 'Vegetables', 'kg', 50.00),
+            ('Ampalaya', 'Vegetables', 'kg', 85.00),
+            ('Sitaw', 'Vegetables', 'bundle', 30.00),
+            ('Kalabasa', 'Vegetables', 'kg', 50.00),
+            ('Eggplant', 'Vegetables', 'kg', 75.00),
+            ('Okra', 'Vegetables', 'pack', 20.00),
+            ('Repolyo', 'Vegetables', 'kg', 100.00),
+            ('Carrots', 'Vegetables', 'pc', 25.00),
+            ('Potato', 'Vegetables', 'pc', 25.00),
+            ('Cauliflower', 'Vegetables', 'kg', 260.00),
+            ('Broccoli', 'Vegetables', 'kg', 240.00),
+            ('Chicharo', 'Vegetables', 'pack', 65.00),
+            ('Young Corn', 'Vegetables', 'pack', 40.00),
+            ('Bell Pepper', 'Vegetables', 'pc', 20.00),
+            ('Quail Eggs', 'Pantry', 'tray', 80.00),
+            ('Garlic', 'Vegetables', 'pack', 20.00),
+            ('Onion', 'Vegetables', 'pack', 20.00),
+            ('Ginger', 'Vegetables', 'kg', 120.00),
+            ('Tomatoes', 'Vegetables', 'pack', 20.00),
+            ('Bagoong Alamang', 'Condiments', 'pc', 70.00),
+            ('Siling Haba', 'Vegetables', 'kg', 125.00),
+            ('Laing', 'Vegetables', 'pack', 50.00),
+            ('Rambutan', 'Fruits', 'kg', 115.00),
+            ('Avocado', 'Fruits', 'kg', 150.00),
+            ('Pineapple', 'Fruits', 'pc', 80.00),
+            ('Orange', 'Fruits', 'pc', 20.00),
+            ('Lakatan Banana', 'Fruits', 'kg', 90.00),
+            ('Latundan Banana', 'Fruits', 'kg', 70.00),
+            ('Saba Banana (kg)', 'Fruits', 'kg', 60.00),
+            ('Saba Banana (pc)', 'Fruits', 'pc', 4.00)
+        ) AS t (name, category, unit, price)
     LOOP
-SELECT id INTO v_item_id FROM items WHERE lower(name) = lower(r.name) ORDER BY id LIMIT 1;
-IF v_item_id IS NULL THEN
+        SELECT id INTO v_item_id FROM items WHERE lower(name) = lower(r.name) ORDER BY id LIMIT 1;
+        IF v_item_id IS NULL THEN
             INSERT INTO items (name, category, unit, is_ingredient, include_in_cart, default_store_id)
             VALUES (r.name, r.category, r.unit, TRUE, TRUE, v_store_id)
             RETURNING id INTO v_item_id;
-END IF;
+        END IF;
 
-INSERT INTO store_prices (item_id, store_id, price_amount, price_source)
-VALUES (v_item_id, v_store_id, r.price, 'MANUAL')
-    ON CONFLICT (item_id, store_id) DO NOTHING;
-END LOOP;
+        INSERT INTO store_prices (item_id, store_id, price_amount, price_source)
+        VALUES (v_item_id, v_store_id, r.price, 'MANUAL')
+        ON CONFLICT (item_id, store_id) DO NOTHING;
+    END LOOP;
 
-INSERT INTO data_seed_log (seed_key) VALUES (v_seed_key);
+    INSERT INTO data_seed_log (seed_key) VALUES (v_seed_key);
 END
 $pasig$;
 @@
@@ -431,72 +431,72 @@ $pasig$;
 -- ════════════════════════════════════════════════════════════════════
 DO $ingredientflags$
 DECLARE
-v_seed_key CONSTANT TEXT := 'ingredient-flags-v1';
+    v_seed_key CONSTANT TEXT := 'ingredient-flags-v1';
 BEGIN
-CREATE TABLE IF NOT EXISTS data_seed_log (
-                                             seed_key   VARCHAR(100) PRIMARY KEY,
-    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    CREATE TABLE IF NOT EXISTS data_seed_log (
+        seed_key   VARCHAR(100) PRIMARY KEY,
+        applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
-IF EXISTS (SELECT 1 FROM data_seed_log WHERE seed_key = v_seed_key) THEN
+    IF EXISTS (SELECT 1 FROM data_seed_log WHERE seed_key = v_seed_key) THEN
         RETURN;
-END IF;
+    END IF;
 
-UPDATE items
-SET is_ingredient = FALSE
-WHERE is_ingredient = TRUE
-  AND (
-    lower(name) IN (
-                    'arla full cream milk',
-                    'arla low fat milk',
-                    'butterkist',
-                    'cebu dried mango slices',
-                    'chocolate marble ring cake',
-                    'chocolate strawberry marble ring cake',
-                    'coca-cola',
-                    'coca-cola regular',
-                    'coca-cola zero sugar',
-                    'cowhead regular milk',
-                    'dan d pak popcorn kernels',
-                    'del monte pineapple juice',
-                    'fanta grape',
-                    'fanta orange',
-                    'guava candy',
-                    'hbaf honey butter almond',
-                    'imaba yellowfin tuna pudding',
-                    'indomie mi goreng',
-                    'kitkat matcha',
-                    'lakatan banana',
-                    'latundan banana',
-                    'lotte milk ice cream',
-                    'lucky me! supreme mini cup la paz batchoy',
-                    'lucky me! supreme mini cup bulalo',
-                    'minute maid blue',
-                    'minute maid fresh orange',
-                    'minute maid pitcher',
-                    'neubake white bread',
-                    'nissin cup mini sotanghon chicken',
-                    'orange',
-                    'philippine dried mango chips',
-                    'rambutan',
-                    'saba banana (kg)',
-                    'selecta fortified milk',
-                    'smirnoff mule',
-                    'suncrest fudge barr dark chocolate',
-                    'sunlly cola',
-                    'tostitos chunky salsa',
-                    'trolli kiss',
-                    'yakult'
-        )
-        OR lower(name) LIKE 'nestea%'
-        OR lower(name) LIKE 'nescaf%'
-        OR lower(name) LIKE 'nestle%'
-        OR lower(name) LIKE '%vodka%'
-        OR lower(name) LIKE 'tang %'
-        OR lower(name) LIKE 'hair color%'
-    );
+    UPDATE items
+       SET is_ingredient = FALSE
+     WHERE is_ingredient = TRUE
+       AND (
+            lower(name) IN (
+            'arla full cream milk',
+            'arla low fat milk',
+            'butterkist',
+            'cebu dried mango slices',
+            'chocolate marble ring cake',
+            'chocolate strawberry marble ring cake',
+            'coca-cola',
+            'coca-cola regular',
+            'coca-cola zero sugar',
+            'cowhead regular milk',
+            'dan d pak popcorn kernels',
+            'del monte pineapple juice',
+            'fanta grape',
+            'fanta orange',
+            'guava candy',
+            'hbaf honey butter almond',
+            'imaba yellowfin tuna pudding',
+            'indomie mi goreng',
+            'kitkat matcha',
+            'lakatan banana',
+            'latundan banana',
+            'lotte milk ice cream',
+            'lucky me! supreme mini cup la paz batchoy',
+            'lucky me! supreme mini cup bulalo',
+            'minute maid blue',
+            'minute maid fresh orange',
+            'minute maid pitcher',
+            'neubake white bread',
+            'nissin cup mini sotanghon chicken',
+            'orange',
+            'philippine dried mango chips',
+            'rambutan',
+            'saba banana (kg)',
+            'selecta fortified milk',
+            'smirnoff mule',
+            'suncrest fudge barr dark chocolate',
+            'sunlly cola',
+            'tostitos chunky salsa',
+            'trolli kiss',
+            'yakult'
+            )
+         OR lower(name) LIKE 'nestea%'
+         OR lower(name) LIKE 'nescaf%'
+         OR lower(name) LIKE 'nestle%'
+         OR lower(name) LIKE '%vodka%'
+         OR lower(name) LIKE 'tang %'
+         OR lower(name) LIKE 'hair color%'
+       );
 
-INSERT INTO data_seed_log (seed_key) VALUES (v_seed_key);
+    INSERT INTO data_seed_log (seed_key) VALUES (v_seed_key);
 END
 $ingredientflags$;
 @@
@@ -516,40 +516,40 @@ $ingredientflags$;
 -- ════════════════════════════════════════════════════════════════════
 DO $categorydefaults$
 DECLARE
-v_seed_key CONSTANT TEXT := 'category-default-stores-v1';
+    v_seed_key CONSTANT TEXT := 'category-default-stores-v1';
     v_puregold BIGINT;
     v_pasig    BIGINT;
 BEGIN
-CREATE TABLE IF NOT EXISTS data_seed_log (
-                                             seed_key   VARCHAR(100) PRIMARY KEY,
-    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    CREATE TABLE IF NOT EXISTS data_seed_log (
+        seed_key   VARCHAR(100) PRIMARY KEY,
+        applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
-IF EXISTS (SELECT 1 FROM data_seed_log WHERE seed_key = v_seed_key) THEN
+    IF EXISTS (SELECT 1 FROM data_seed_log WHERE seed_key = v_seed_key) THEN
         RETURN;
-END IF;
+    END IF;
 
-SELECT id INTO v_puregold FROM stores WHERE lower(name) = 'puregold' LIMIT 1;
-SELECT id INTO v_pasig    FROM stores WHERE lower(name) LIKE 'pasig%' ORDER BY id LIMIT 1;
-IF v_puregold IS NULL OR v_pasig IS NULL THEN
+    SELECT id INTO v_puregold FROM stores WHERE lower(name) = 'puregold' LIMIT 1;
+    SELECT id INTO v_pasig    FROM stores WHERE lower(name) LIKE 'pasig%' ORDER BY id LIMIT 1;
+    IF v_puregold IS NULL OR v_pasig IS NULL THEN
         RAISE NOTICE 'category defaults: Puregold or Pasig store not found yet, skipping for now';
         RETURN;
-END IF;
+    END IF;
 
-INSERT INTO category_defaults (category, default_store_id, default_is_ingredient)
-SELECT c.category,
-       CASE WHEN c.category IN ('Fruits', 'Vegetables', 'Meat', 'Seafood', 'Dry Goods')
+    INSERT INTO category_defaults (category, default_store_id, default_is_ingredient)
+    SELECT c.category,
+           CASE WHEN c.category IN ('Fruits', 'Vegetables', 'Meat', 'Seafood', 'Dry Goods')
                 THEN v_pasig ELSE v_puregold END,
-       FALSE
-FROM (
-         SELECT unnest(ARRAY['Fruits', 'Vegetables', 'Refrigerated/Frozen Goods', 'Condiments/Sauces', 'Spices', 'Canned Goods', 'Noodles', 'Dairy', 'Meat', 'Seafood', 'Drinks', 'Snacks', 'Pets', 'Personal Care', 'Medicine', 'Cleaning', 'Office/School Supplies', 'Others']) AS category
-         UNION
-         SELECT DISTINCT category FROM items WHERE category IS NOT NULL AND category <> ''
-     ) c
+           FALSE
+      FROM (
+            SELECT unnest(ARRAY['Fruits', 'Vegetables', 'Refrigerated/Frozen Goods', 'Condiments/Sauces', 'Spices', 'Canned Goods', 'Noodles', 'Dairy', 'Meat', 'Seafood', 'Drinks', 'Snacks', 'Pets', 'Personal Care', 'Medicine', 'Cleaning', 'Office/School Supplies', 'Others']) AS category
+            UNION
+            SELECT DISTINCT category FROM items WHERE category IS NOT NULL AND category <> ''
+           ) c
     ON CONFLICT (category) DO UPDATE
-                                  SET default_store_id = COALESCE(category_defaults.default_store_id, EXCLUDED.default_store_id);
+        SET default_store_id = COALESCE(category_defaults.default_store_id, EXCLUDED.default_store_id);
 
-INSERT INTO data_seed_log (seed_key) VALUES (v_seed_key);
+    INSERT INTO data_seed_log (seed_key) VALUES (v_seed_key);
 END
 $categorydefaults$;
 @@
@@ -571,37 +571,37 @@ $categorydefaults$;
 -- ════════════════════════════════════════════════════════════════════
 DO $categorydefaultsperuser$
 DECLARE
-v_seed_key CONSTANT TEXT := 'category-defaults-per-user-v1';
+    v_seed_key CONSTANT TEXT := 'category-defaults-per-user-v1';
     v_user_id  BIGINT;
 BEGIN
-CREATE TABLE IF NOT EXISTS data_seed_log (
-                                             seed_key   VARCHAR(100) PRIMARY KEY,
-    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    CREATE TABLE IF NOT EXISTS data_seed_log (
+        seed_key   VARCHAR(100) PRIMARY KEY,
+        applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
-IF EXISTS (SELECT 1 FROM data_seed_log WHERE seed_key = v_seed_key) THEN
+    IF EXISTS (SELECT 1 FROM data_seed_log WHERE seed_key = v_seed_key) THEN
         RETURN;
-END IF;
+    END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_category_defaults') THEN
         RAISE NOTICE 'category defaults per-user: user_category_defaults table not created yet, skipping for now';
         RETURN;
-END IF;
+    END IF;
 
-SELECT id INTO v_user_id FROM users ORDER BY id LIMIT 1;
-IF v_user_id IS NULL THEN
+    SELECT id INTO v_user_id FROM users ORDER BY id LIMIT 1;
+    IF v_user_id IS NULL THEN
         RETURN;
-END IF;
+    END IF;
 
-INSERT INTO user_category_defaults (user_id, category, default_store_id, default_is_ingredient)
-SELECT v_user_id, cd.category, cd.default_store_id, cd.default_is_ingredient
-FROM category_defaults cd
-WHERE NOT EXISTS (
-    SELECT 1 FROM user_category_defaults ucd
-    WHERE ucd.user_id = v_user_id AND ucd.category = cd.category
-);
+    INSERT INTO user_category_defaults (user_id, category, default_store_id, default_is_ingredient)
+    SELECT v_user_id, cd.category, cd.default_store_id, cd.default_is_ingredient
+      FROM category_defaults cd
+     WHERE NOT EXISTS (
+            SELECT 1 FROM user_category_defaults ucd
+             WHERE ucd.user_id = v_user_id AND ucd.category = cd.category
+           );
 
-INSERT INTO data_seed_log (seed_key) VALUES (v_seed_key);
+    INSERT INTO data_seed_log (seed_key) VALUES (v_seed_key);
 END
 $categorydefaultsperuser$;
 @@
