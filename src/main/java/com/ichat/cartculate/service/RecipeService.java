@@ -95,14 +95,84 @@ public class RecipeService {
         return toDto(recipe);
     }
 
+    /**
+     * Converts a recipe ingredient's raw quantity into the ITEM's own
+     * priced unit before it goes into the cart, so the cart's quantity -
+     * and therefore its cost, whether priced from the shared StorePrice or
+     * a user's personal UserStorePrice override, since either one is
+     * simply multiplied by this quantity downstream - is always correct
+     * regardless of what unit the recipe itself was written in.
+     *
+     * BUGFIX: this used to be skipped entirely - the recipe's raw
+     * baseQuantity (e.g. 500 for "500 g") was pushed straight into the
+     * cart row as-is, so a recipe line in g/mL/tbsp against a kg/L-priced
+     * item made the cart charge for a thousand times too much (or too
+     * little, for tbsp). The recipe CARD's displayed cost was already
+     * fixed on the frontend (recipeLogic.ts's priceableQuantity) - this is
+     * the same conversion, applied here so the actual cart total matches
+     * what the recipe card shows, not just the card itself.
+     *
+     * Mirrors recipeLogic.ts's priceableQuantity() - keep the two in sync:
+     *  - unit matches the item's own unit (or neither is set) -> unchanged
+     *  - "g"/"mL" -> divided by 1000 (assumes the item is priced per kg/L,
+     *    the same simplifying convention already used elsewhere in this app)
+     *  - "tbsp" -> converted using a standard 1 tbsp \u2248 15 g/mL, applied
+     *    against whichever basis (kg/g or L/mL) the item is actually priced
+     *    in - a tablespoon works the same for a liquid (soy sauce, priced
+     *    per L) as for a powder (sugar, priced per kg)
+     *  - otherwise, the item's own configured alt-unit (altUnit/
+     *    altUnitQuantity - see Item.java) if it matches
+     *  - anything else is left unconverted, same "don't guess" fallback as before
+     */
+    private static BigDecimal convertToItemUnit(BigDecimal quantity, String ingredientUnit, Item item) {
+        if (ingredientUnit == null || ingredientUnit.isBlank()) return quantity;
+        String itemUnit = item.getUnit();
+        if (itemUnit != null && ingredientUnit.equals(itemUnit)) return quantity;
+
+        switch (ingredientUnit) {
+            case "g":
+            case "mL":
+                return quantity.divide(new BigDecimal("1000"), 6, java.math.RoundingMode.HALF_UP);
+            case "tbsp": {
+                if (itemUnit == null) break;
+                switch (itemUnit) {
+                    case "kg":
+                    case "L":
+                        // 1 tbsp \u2248 15 g or 15 mL, out of a 1000 g/mL basis.
+                        return quantity.multiply(new BigDecimal("15"))
+                                .divide(new BigDecimal("1000"), 6, java.math.RoundingMode.HALF_UP);
+                    case "g":
+                    case "mL":
+                        return quantity.multiply(new BigDecimal("15"));
+                    default:
+                        break;
+                }
+                break;
+            }
+            default:
+                break;
+        }
+
+        String altUnit = item.getAltUnit();
+        BigDecimal altUnitQuantity = item.getAltUnitQuantity();
+        if (altUnit != null && ingredientUnit.equals(altUnit) && altUnitQuantity != null && altUnitQuantity.signum() > 0) {
+            return quantity.divide(altUnitQuantity, 6, java.math.RoundingMode.HALF_UP);
+        }
+
+        return quantity; // unrelated unit - leave as written, same as before this fix
+    }
+
     private void syncCartForRecipe(Recipe recipe) {
         List<RecipeIngredient> ingredients = recipeIngredientRepository.findByRecipeId(recipe.getId());
         for (RecipeIngredient ingredient : ingredients) {
             ResolvedStore resolved = resolveStore(ingredient);
             if (resolved.store == null) continue;
-            BigDecimal quantity = ingredient.isAddToCart()
+            BigDecimal rawQuantity = ingredient.isAddToCart()
                     ? ingredient.getBaseQuantity().multiply(recipe.getCurrentMultiplier())
                     : BigDecimal.ZERO;
+            BigDecimal quantity = rawQuantity.signum() == 0
+                    ? rawQuantity
+                    : convertToItemUnit(rawQuantity, ingredient.getUnit(), ingredient.getItem());
             cartService.upsertRecipeSourcedItem(
                     recipe.getUser().getId(),
                     ingredient.getItem().getId(),
@@ -160,7 +230,7 @@ public class RecipeService {
             ResolvedStore resolved = resolveStore(ingredient);
             if (resolved.store == null) continue; // no known store/price for this item yet - nothing to sync
 
-                BigDecimal quantity = ingredient.isAddToCart()
+            BigDecimal quantity = ingredient.isAddToCart()
                     ? ingredient.getBaseQuantity().multiply(multiplier)
                     : BigDecimal.ZERO;
             cartService.upsertRecipeSourcedItem(userId, ingredient.getItem().getId(), resolved.store.getId(), recipeId, quantity);
@@ -309,7 +379,10 @@ public class RecipeService {
                 resolved.price,
                 resolved.isCustomRouted,
                 ingredient.isOptional(),
-                ingredient.isAddToCart()
+                ingredient.isAddToCart(),
+                item.getUnit(),
+                item.getAltUnit(),
+                item.getAltUnitQuantity()
         );
     }
 }
