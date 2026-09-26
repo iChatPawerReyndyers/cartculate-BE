@@ -28,4 +28,8 @@ public class CreateItemRequest {
     private boolean isIngredient;
     /** Explicit default store; null uses the category default when available. */
     private Long defaultStoreId;
+    /** Optional alternate unit for costing recipes only, e.g. "kg" for a "pc"-priced item. See Item.java. */
+    private String altUnit;
+    /** How many of altUnit equal ONE of this item's own unit. Required (and validated) whenever altUnit is set. */
+    private java.math.BigDecimal altUnitQuantity;
 }

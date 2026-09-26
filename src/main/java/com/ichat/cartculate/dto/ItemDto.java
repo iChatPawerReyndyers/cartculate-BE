@@ -33,4 +33,8 @@ public class ItemDto {
     /** True if this item should appear in the Cart tab at all. See Item.java. */
     private boolean includeInCart;
     private String defaultStoreId;
+    /** Alternate unit for costing recipes only (e.g. "kg" for a "pc"-priced item). Null if not configured. See Item.java. */
+    private String altUnit;
+    /** How many of altUnit equal ONE of this item's own unit. Null when altUnit is null. */
+    private java.math.BigDecimal altUnitQuantity;
 }
