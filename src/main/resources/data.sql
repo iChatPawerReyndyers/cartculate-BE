@@ -634,12 +634,12 @@ END IF;
 
 FOR r IN
 SELECT * FROM (VALUES
-                   ('Carrots', 'kg', 0.10)  -- 1 pc ≈ 100g average,
-                   ('Potato', 'kg', 0.15)  -- 1 pc ≈ 150g average,
-            ('Bell Pepper', 'kg', 0.15)  -- 1 pc ≈ 150g average,
-            ('Pineapple', 'kg', 1.20)  -- 1 pc ≈ 1.2kg average,
-            ('Orange', 'kg', 0.20)  -- 1 pc ≈ 200g average,
-            ('Saba Banana (pc)', 'kg', 0.10)  -- 1 pc ≈ 100g average
+                   ('Carrots', 'kg', 0.10),          -- 1 pc ≈ 100g average
+                   ('Potato', 'kg', 0.15),           -- 1 pc ≈ 150g average
+                   ('Bell Pepper', 'kg', 0.15),      -- 1 pc ≈ 150g average
+                   ('Pineapple', 'kg', 1.20),        -- 1 pc ≈ 1.2kg average
+                   ('Orange', 'kg', 0.20),           -- 1 pc ≈ 200g average
+                   ('Saba Banana (pc)', 'kg', 0.10)  -- 1 pc ≈ 100g average
               ) AS t (name, alt_unit, alt_unit_quantity)
     LOOP
 UPDATE items
