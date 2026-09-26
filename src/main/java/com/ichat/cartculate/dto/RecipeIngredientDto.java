@@ -43,4 +43,17 @@ public class RecipeIngredientDto {
     /** True when recipe scaling should sync this ingredient to the cart. */
     @JsonProperty("addToCart")
     private boolean addToCart;
+    /**
+     * The ITEM's own priced unit (Item.getUnit()) - i.e. what defaultPrice
+     * above is actually quoted per. May differ from this line's own `unit`
+     * (e.g. a recipe records "0.5 kg" of an item priced per "pc"). Used
+     * together with itemAltUnit/itemAltUnitQuantity by the frontend's
+     * recipeLogic.ts::priceableQuantity() to cost the line correctly - see
+     * Item.java's javadoc for the conversion this enables.
+     */
+    private String priceUnit;
+    /** Copied from the item's altUnit (Item.java). Null if the item has no alternate unit configured. */
+    private String itemAltUnit;
+    /** Copied from the item's altUnitQuantity (Item.java). Null when itemAltUnit is null. */
+    private BigDecimal itemAltUnitQuantity;
 }

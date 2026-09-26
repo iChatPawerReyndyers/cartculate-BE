@@ -73,6 +73,7 @@ public class ItemService {
         item.setUnit(request.getUnit());
         item.setIngredient(request.isIngredient());
         item.setDefaultStore(resolveDefaultStore(request.getDefaultStoreId(), request.getCategory()));
+        applyAltUnit(item, request.getAltUnit(), request.getAltUnitQuantity());
         return toDto(itemRepository.save(item));
     }
 
@@ -85,8 +86,32 @@ public class ItemService {
         item.setUnit(request.getUnit());
         item.setIngredient(request.isIngredient());
         item.setDefaultStore(request.getDefaultStoreId() == null ? null : storeRepository.findById(request.getDefaultStoreId())
-            .orElseThrow(() -> new IllegalArgumentException("Store not found: " + request.getDefaultStoreId())));
+                .orElseThrow(() -> new IllegalArgumentException("Store not found: " + request.getDefaultStoreId())));
+        applyAltUnit(item, request.getAltUnit(), request.getAltUnitQuantity());
         return toDto(itemRepository.save(item));
+    }
+
+    /**
+     * Validates and applies an item's alternate-unit costing fields (see
+     * Item.java's javadoc). A blank altUnit clears both fields. A non-blank
+     * altUnit requires a positive altUnitQuantity, and must not equal the
+     * item's own unit (that would be a no-op conversion and a likely typo).
+     */
+    private void applyAltUnit(Item item, String altUnit, java.math.BigDecimal altUnitQuantity) {
+        String normalized = (altUnit == null || altUnit.isBlank()) ? null : altUnit.trim();
+        if (normalized == null) {
+            item.setAltUnit(null);
+            item.setAltUnitQuantity(null);
+            return;
+        }
+        if (altUnitQuantity == null || altUnitQuantity.signum() <= 0) {
+            throw new IllegalArgumentException("altUnitQuantity must be greater than 0 when altUnit is set");
+        }
+        if (item.getUnit() != null && normalized.equalsIgnoreCase(item.getUnit().trim())) {
+            throw new IllegalArgumentException("altUnit must be different from the item's own unit");
+        }
+        item.setAltUnit(normalized);
+        item.setAltUnitQuantity(altUnitQuantity);
     }
 
     /** PATCH /api/items/{itemId}/include-in-cart - toggles the Price Catalog checkbox controlling Cart tab visibility. */
@@ -248,7 +273,8 @@ public class ItemService {
 
     private ItemDto toDto(Item item) {
         return new ItemDto(item.getId().toString(), item.getName(), item.getCategory(), item.getUnit(), item.isIngredient(), item.isIncludeInCart(),
-                item.getDefaultStore() == null ? null : item.getDefaultStore().getId().toString());
+                item.getDefaultStore() == null ? null : item.getDefaultStore().getId().toString(),
+                item.getAltUnit(), item.getAltUnitQuantity());
     }
 
     private Store resolveDefaultStore(Long requestedStoreId, String category) {
