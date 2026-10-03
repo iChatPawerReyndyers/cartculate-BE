@@ -86,7 +86,7 @@ public class ItemService {
         item.setUnit(request.getUnit());
         item.setIngredient(request.isIngredient());
         item.setDefaultStore(request.getDefaultStoreId() == null ? null : storeRepository.findById(request.getDefaultStoreId())
-                .orElseThrow(() -> new IllegalArgumentException("Store not found: " + request.getDefaultStoreId())));
+            .orElseThrow(() -> new IllegalArgumentException("Store not found: " + request.getDefaultStoreId())));
         applyAltUnit(item, request.getAltUnit(), request.getAltUnitQuantity());
         return toDto(itemRepository.save(item));
     }

@@ -230,7 +230,7 @@ public class RecipeService {
             ResolvedStore resolved = resolveStore(ingredient);
             if (resolved.store == null) continue; // no known store/price for this item yet - nothing to sync
 
-            BigDecimal quantity = ingredient.isAddToCart()
+                BigDecimal quantity = ingredient.isAddToCart()
                     ? ingredient.getBaseQuantity().multiply(multiplier)
                     : BigDecimal.ZERO;
             cartService.upsertRecipeSourcedItem(userId, ingredient.getItem().getId(), resolved.store.getId(), recipeId, quantity);
